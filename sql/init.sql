@@ -1,0 +1,2 @@
+-- Database initialization SQL for mall-order-demo.
+-- Business tables will be added after the product and order modules are designed.
