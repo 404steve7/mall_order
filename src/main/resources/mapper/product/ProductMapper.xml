@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.henry.mallorder.product.mapper.ProductMapper">
+
+    <insert id="insert" parameterType="com.henry.mallorder.product.entity.Product" useGeneratedKeys="true" keyProperty="id">
+       INSERT INTO product(
+        product_name,
+        price,
+        stock,
+        status
+        )VALUES(
+        #{productName},
+        #{price},
+        #{stock},
+        #{status}
+        )
+    </insert>
+
+    <select id="selectList" resultType="com.henry.mallorder.product.entity.Product">
+        SELECT
+            id,
+            product_name,
+            price,
+            stock,
+            status,
+            create_time,
+            update_time
+        FROM product
+        ORDER BY id DESC
+    </select>
+
+    <select id="selectById" resultType="com.henry.mallorder.product.entity.Product">
+        SELECT
+            id,
+            product_name,
+            price,
+            stock,
+            status,
+            create_time,
+            update_time
+        FROM product
+        WHERE id =#{id}
+    </select>
+
+    <update id="updateById" parameterType="com.henry.mallorder.product.entity.Product">
+        UPDATE product
+        SET
+            product_name = #{productName},
+            price = #{price},
+            stock = #{stock},
+            status = #{status}
+        WHERE id = #{id}
+    </update>
+
+</mapper>
