@@ -54,4 +54,12 @@
         WHERE id = #{id}
     </update>
 
+    <update id="reduceStock">
+        UPDATE product
+        SET stock = stock - #{quantity}
+        WHERE id = #{productId}
+            AND stock >= #{quantity}
+            AND status = 1
+    </update>
+
 </mapper>

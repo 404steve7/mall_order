@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.henry.mallorder.order.mapper.OrderMapper">
+
+    <insert id="insertOrderInfo" parameterType="com.henry.mallorder.order.entity.OrderInfo" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO order_info(
+            order_no,
+            user_id,
+            total_amount,
+            status
+        ) VALUES (
+            #{orderNo},
+            #{userId},
+            #{totalAmount},
+            #{status}
+        )
+    </insert>
+
+    <insert id="insertOrderItem" parameterType="com.henry.mallorder.order.entity.OrderItem" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO order_item(
+            order_no,
+            product_id,
+            product_name,
+            product_price,
+            quantity,
+            total_amount
+        ) VALUES (
+            #{orderNo},
+            #{productId},
+            #{productName},
+            #{productPrice},
+            #{quantity},
+            #{totalAmount}
+        )
+    </insert>
+
+    <select id="selectOrderInfoByOrderNo" resultType="com.henry.mallorder.order.entity.OrderInfo">
+        SELECT
+            id,
+            order_no,
+            user_id,
+            total_amount,
+            status,
+            create_time,
+            update_time
+        FROM order_info
+        WHERE order_no = #{orderNo}
+    </select>
+
+</mapper>
