@@ -4,14 +4,17 @@ import com.henry.mallorder.order.dto.CreateOrderRequest;
 import com.henry.mallorder.order.entity.OrderInfo;
 import com.henry.mallorder.order.entity.OrderItem;
 import com.henry.mallorder.order.mapper.OrderMapper;
+import com.henry.mallorder.order.vo.OrderDetailVO;
 import com.henry.mallorder.product.entity.Product;
 import com.henry.mallorder.product.mapper.ProductMapper;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 
 @Service
@@ -61,8 +64,52 @@ public class OrderService {
         return orderNo;
     }
 
-    public OrderInfo getOrderByOrderNo(String orderNo) {
-        return orderMapper.selectOrderInfoByOrderNo(orderNo);
+    public OrderDetailVO getOrderDetailByOrderNo(String orderNo) {
+        OrderInfo orderInfo = orderMapper.selectOrderInfoByOrderNo(orderNo);
+        if (orderInfo == null) {
+            throw new RuntimeException("订单不存在");
+        }
+
+        List<OrderItem> items = orderMapper.selectOrderItemsByOrderNo(orderNo);
+
+        OrderDetailVO detailVO = new OrderDetailVO();
+        detailVO.setOrderNo(orderInfo.getOrderNo());
+        detailVO.setUserId(orderInfo.getUserId());
+        detailVO.setTotalAmount(orderInfo.getTotalAmount());
+        detailVO.setStatus(orderInfo.getStatus());
+        detailVO.setCreateTime(orderInfo.getCreateTime());
+        detailVO.setUpdateTime(orderInfo.getUpdateTime());
+        detailVO.setItems(items);
+
+        return detailVO;
+    }
+
+    @Transactional
+    public boolean cancelOrder(String orderNo) {
+        OrderInfo orderInfo = orderMapper.selectOrderInfoByOrderNo(orderNo);
+        if (orderInfo == null) {
+            throw new RuntimeException("订单不存在");
+        }
+
+        if (Integer.valueOf(2).equals(orderInfo.getStatus())) {
+            throw new RuntimeException("订单已取消");
+        }
+
+        List<OrderItem> items = orderMapper.selectOrderItemsByOrderNo(orderNo);
+
+        int updateResult = orderMapper.updateOrderStatus(orderNo, 2);
+        if (updateResult == 0) {
+            throw new RuntimeException("订单取消失败");
+        }
+
+        for (OrderItem item : items) {
+            int increaseResult = productMapper.increaseStock(item.getProductId(), item.getQuantity());
+            if (increaseResult == 0) {
+                throw new RuntimeException("恢复库存失败");
+            }
+        }
+
+        return true;
     }
 
     private String generateOrderNo() {

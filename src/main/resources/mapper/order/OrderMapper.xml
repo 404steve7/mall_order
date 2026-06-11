@@ -49,4 +49,26 @@
         WHERE order_no = #{orderNo}
     </select>
 
+    <select id="selectOrderItemsByOrderNo" resultType="com.henry.mallorder.order.entity.OrderItem">
+        SELECT
+            id,
+            order_no,
+            product_id,
+            product_name,
+            product_price,
+            quantity,
+            total_amount,
+            create_time
+        FROM order_item
+        WHERE order_no = #{orderNo}
+        ORDER BY id ASC
+    </select>
+
+    <update id="updateOrderStatus">
+        UPDATE order_info
+        SET status = #{status}
+        WHERE order_no = #{orderNo}
+          AND status = 1
+    </update>
+
 </mapper>

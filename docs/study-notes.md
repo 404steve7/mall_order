@@ -58,7 +58,7 @@ com.henry.mallorder
 - Mapper：访问数据库。
 - Entity：对应数据库表。
 - DTO：接收请求参数。
-- VO：返回给前端的数据，目前还没正式使用。
+- VO：返回给前端的数据，可以把多张表的数据组合成一个返回结果。
 
 请求大致流程：
 
@@ -219,6 +219,7 @@ com.henry.mallorder.order
 - `OrderInfo`：订单主表 Entity，对应 `order_info`。
 - `OrderItem`：订单明细表 Entity，对应 `order_item`。
 - `CreateOrderRequest`：创建订单请求 DTO。
+- `OrderDetailVO`：订单详情返回 VO，包含订单主信息和订单明细列表。
 - `OrderMapper`：订单数据库操作接口。
 - `OrderMapper.xml`：订单 SQL。
 - `OrderService`：订单业务逻辑。
@@ -229,6 +230,7 @@ com.henry.mallorder.order
 ```text
 POST /order/create
 GET  /order/{orderNo}
+POST /order/cancel/{orderNo}
 ```
 
 创建订单流程：
@@ -262,6 +264,121 @@ OD + 年月日时分秒毫秒
 ```text
 OD20260610200621967
 ```
+
+## 订单详情 VO
+
+最开始查询订单时，只返回了 `order_info` 订单主表。
+
+但是一个订单通常不只需要主表信息，还要知道这个订单买了哪些商品，所以后来加了：
+
+```text
+OrderDetailVO
+```
+
+它不是数据库表，而是专门返回给前端的数据结构。
+
+当前 `OrderDetailVO` 包含：
+
+```text
+orderNo
+userId
+totalAmount
+status
+createTime
+updateTime
+items
+```
+
+其中 `items` 是 `List<OrderItem>`，表示订单明细列表。
+
+查询订单详情的流程：
+
+```text
+GET /order/{orderNo}
+↓
+OrderController
+↓
+OrderService
+↓
+查询 order_info
+↓
+查询 order_item
+↓
+组装 OrderDetailVO
+↓
+返回给 Apifox
+```
+
+小白理解：
+
+```text
+Entity 更像数据库表的一行数据。
+DTO 更像前端传进来的请求参数。
+VO 更像后端整理好后返回给前端看的结果。
+```
+
+## 取消订单
+
+取消订单不是简单地把订单删掉。
+
+真实业务里订单一般不会物理删除，而是修改状态：
+
+```text
+1 = 已创建
+2 = 已取消
+```
+
+取消订单时要做两件关键事：
+
+```text
+1. 把 order_info.status 从 1 改成 2
+2. 把这个订单买走的商品库存加回去
+```
+
+取消订单流程：
+
+```text
+POST /order/cancel/{orderNo}
+↓
+查询订单是否存在
+↓
+判断订单是否已经取消
+↓
+查询订单明细
+↓
+更新订单状态为 2
+↓
+遍历订单明细，把每个商品库存加回去
+↓
+返回 true
+```
+
+为什么不能重复取消：
+
+```text
+如果第一次取消已经把库存 45 加回 50，
+第二次取消又加一次，库存就会变成 55。
+这就错了。
+```
+
+所以代码里要判断：
+
+```java
+if (Integer.valueOf(2).equals(orderInfo.getStatus())) {
+    throw new RuntimeException("订单已取消");
+}
+```
+
+同时 SQL 里也限制只更新未取消订单：
+
+```sql
+UPDATE order_info
+SET status = #{status}
+WHERE order_no = #{orderNo}
+  AND status = 1
+```
+
+这样可以减少重复取消导致库存多加的风险。
 
 ## Entity 和 DTO
 
@@ -386,6 +503,21 @@ WHERE id = #{productId}
 
 如果扣库存成功，但插入订单失败，事务会回滚，避免出现库存少了但订单不存在的问题。
 
+取消订单也使用：
+
+```java
+@Transactional
+```
+
+取消订单涉及：
+
+```text
+修改订单状态
+恢复商品库存
+```
+
+如果订单状态改成功了，但恢复库存失败，事务会回滚，避免出现订单显示已取消但库存没有加回来的问题。
+
 ## Apifox 接口测试
 
 已通过 Apifox 测通：
@@ -397,6 +529,7 @@ GET  /product/{id}
 PUT  /product/{id}
 POST /order/create
 GET  /order/{orderNo}
+POST /order/cancel/{orderNo}
 ```
 
 浏览器地址栏默认是 GET，不能用来测试 POST 新增或下单接口。
@@ -421,13 +554,15 @@ PowerShell 测中文 JSON 时可能出现乱码或问号。中文接口建议优
 - 下单后商品库存会减少。
 - 库存不足时不会创建订单，库存不变。
 - 商品不存在时不会创建订单。
+- 查询订单详情时，会返回订单主信息和 `items` 明细列表。
+- 取消订单后，订单状态会从 `1` 变成 `2`。
+- 取消订单后，商品库存会恢复。
+- 重复取消订单时会报错，库存不会重复增加。
 
 ## 后续计划
 
 后续会继续补：
 
-- 订单取消。
-- 订单详情 VO，同时返回订单主表和明细。
 - 统一返回结果 `Result<T>`。
 - 全局异常处理 `GlobalExceptionHandler`。
 - 登录拦截器。

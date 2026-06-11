@@ -22,9 +22,11 @@
 - 商品详情：`GET /product/{id}`
 - 商品修改：`PUT /product/{id}`
 - 创建订单：`POST /order/create`
-- 查询订单主表：`GET /order/{orderNo}`
+- 查询订单详情：`GET /order/{orderNo}`
+- 取消订单：`POST /order/cancel/{orderNo}`
 - 下单时扣减商品库存
-- 下单接口使用 `@Transactional` 保证事务一致性
+- 取消订单时恢复商品库存
+- 下单和取消订单接口使用 `@Transactional` 保证事务一致性
 - 商品和订单 SQL 初始化脚本
 
 ## 项目结构
@@ -58,6 +60,7 @@ mall_order_demo
 - `mapper`：定义数据库操作方法。
 - `entity`：对应数据库表，例如 `Product`、`OrderInfo`、`OrderItem`。
 - `dto`：接收请求参数，例如 `ProductCreateRequest`、`CreateOrderRequest`。
+- `vo`：组织返回给前端的数据，例如 `OrderDetailVO`。
 - `resources/mapper`：MyBatis XML SQL 文件。
 - `sql/init.sql`：数据库初始化 SQL。
 - `docs/api.md`：接口文档。
@@ -177,6 +180,46 @@ OrderService
 
 下单接口使用 `@Transactional`，保证扣库存、创建订单主表、创建订单明细要么都成功，要么都失败。
 
+### 查询订单详情
+
+```text
+Apifox
+↓
+OrderController
+↓
+OrderService
+↓
+查询 order_info
+↓
+查询 order_item
+↓
+组装 OrderDetailVO
+↓
+返回订单主信息 + 明细列表
+```
+
+### 取消订单
+
+```text
+Apifox
+↓
+OrderController
+↓
+OrderService
+↓
+查询订单
+↓
+查询订单明细
+↓
+把 order_info.status 改为 2
+↓
+把订单明细中的商品库存加回去
+↓
+返回 true
+```
+
+取消订单接口也使用 `@Transactional`，保证修改订单状态和恢复库存要么都成功，要么都失败。
+
 ## 知识点对应
 
 | 知识点 | 项目体现 |
@@ -186,8 +229,10 @@ OrderService
 | MySQL | 商品表、订单主表、订单明细表 |
 | MyBatis | Mapper 接口 + XML SQL |
 | 参数校验 | DTO 中使用 `@NotBlank`、`@NotNull`、`@Min` |
-| 事务 | 创建订单接口使用 `@Transactional` |
+| VO 返回对象 | `OrderDetailVO` 返回订单主信息和明细列表 |
+| 事务 | 创建订单、取消订单接口使用 `@Transactional` |
 | SQL 安全扣库存 | `UPDATE product SET stock = stock - quantity WHERE stock >= quantity` |
+| 库存恢复 | 取消订单时 `UPDATE product SET stock = stock + quantity` |
 | 接口测试 | 使用 Apifox 测商品和订单接口 |
 | Git | 按阶段 commit 并 push 到 GitHub |
 

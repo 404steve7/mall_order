@@ -1,8 +1,8 @@
 package com.henry.mallorder.order.controller;
 
 import com.henry.mallorder.order.dto.CreateOrderRequest;
-import com.henry.mallorder.order.entity.OrderInfo;
 import com.henry.mallorder.order.service.OrderService;
+import com.henry.mallorder.order.vo.OrderDetailVO;
 
 import jakarta.validation.Valid;
 
@@ -24,7 +24,12 @@ public class OrderController {
     }
 
     @GetMapping("/{orderNo}")
-    public OrderInfo getOrderInfo(@PathVariable("orderNo") String orderNo) {
-        return orderService.getOrderByOrderNo(orderNo);
+    public OrderDetailVO getOrderInfo(@PathVariable("orderNo") String orderNo) {
+        return orderService.getOrderDetailByOrderNo(orderNo);
+    }
+
+    @PostMapping("/cancel/{orderNo}")
+    public Boolean cancelOrder(@PathVariable("orderNo") String orderNo) {
+        return orderService.cancelOrder(orderNo);
     }
 }
