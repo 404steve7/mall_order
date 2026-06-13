@@ -10,7 +10,9 @@
 http://localhost:8080
 ```
 
-当前还没有统一返回对象和全局异常处理。参数错误或业务异常可能返回 Spring Boot 默认错误格式，后续会统一优化。
+当前正在逐步引入统一返回对象 `Result<T>`。已经完成统一返回的接口会返回 `code / message / data` 格式。
+
+当前还没有全局异常处理。参数错误或业务异常可能返回 Spring Boot 默认错误格式，后续会统一优化。
 
 ## 健康检查
 
@@ -20,8 +22,12 @@ http://localhost:8080
 
 响应示例：
 
-```text
-Hello Mall Order
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": "Hello Mall Order"
+}
 ```
 
 ## 商品接口
@@ -61,18 +67,24 @@ Hello Mall Order
 响应示例：
 
 ```json
-[
-  {
-    "id": 4,
-    "productName": "修改后的商品",
-    "price": 88.80,
-    "stock": 45,
-    "status": 1,
-    "createTime": "2026-06-09T23:16:57",
-    "updateTime": "2026-06-10T20:06:21"
-  }
-]
+{
+  "code": 0,
+  "message": "success",
+  "data": [
+    {
+      "id": 4,
+      "productName": "修改后的商品00",
+      "price": 88.80,
+      "stock": 50,
+      "status": 1,
+      "createTime": "2026-06-09T23:16:57",
+      "updateTime": "2026-06-11T23:44:05"
+    }
+  ]
+}
 ```
+
+说明：当前 `GET /product/list` 已改为统一返回格式，真正的商品列表放在 `data` 字段中。
 
 ### GET /product/{id}
 

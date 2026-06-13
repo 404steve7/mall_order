@@ -4,7 +4,10 @@ import com.henry.mallorder.product.dto.ProductCreateRequest;
 import com.henry.mallorder.product.dto.ProductUpdateRequest;
 import com.henry.mallorder.product.entity.Product;
 import com.henry.mallorder.product.service.ProductService;
+import com.henry.mallorder.common.Result;
+
 import jakarta.validation.Valid;
+
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,8 +27,8 @@ public class ProductController {
     }
 
     @GetMapping("/list")
-    public List<Product> listProducts(){
-        return productService.listProducts();
+    public Result<List<Product>> listProducts(){
+        return Result.success(productService.listProducts());
     }
 
     @GetMapping("/{id}")

@@ -18,8 +18,8 @@ public class CreateOrderRequest {
     public Long getUserId() {
         return userId;
     }
-    public void setUseID(Long userID) {
-        this.userId = userID;
+    public void setUseId(Long userId) {
+        this.userId = this.userId;
     }
 
     public Long getProductId() {

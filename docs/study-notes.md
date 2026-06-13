@@ -29,6 +29,7 @@ com.henry.mallorder
 - `private`：私有字段，外部不能直接访问。
 - `getter/setter`：读取和设置私有字段的方法。
 - `List<T>`：列表，表示多个同类型对象。
+- `Result<T>`：统一返回对象，`T` 表示 `data` 中真正数据的类型。
 - `BigDecimal`：适合表示金额，避免 `double` 的精度问题。
 - `LocalDateTime`：表示日期时间。
 
@@ -59,6 +60,7 @@ com.henry.mallorder
 - Entity：对应数据库表。
 - DTO：接收请求参数。
 - VO：返回给前端的数据，可以把多张表的数据组合成一个返回结果。
+- Common：通用代码，目前放了统一返回对象 `Result<T>`。
 
 请求大致流程：
 
@@ -205,6 +207,91 @@ ProductMapper.xml 的 INSERT SQL
 ↓
 product 表
 ```
+
+当前 `GET /product/list` 已经改成统一返回：
+
+```java
+public Result<List<Product>> listProducts() {
+    return Result.success(productService.listProducts());
+}
+```
+
+返回结果从原来的商品数组，变成：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": [
+    {
+      "id": 4,
+      "productName": "修改后的商品00"
+    }
+  ]
+}
+```
+
+真正的数据仍然是商品列表，只是被放进了 `data` 字段里。
+
+## 统一返回 Result
+
+真实项目里，不同接口最好有统一返回格式。
+
+如果没有统一返回，接口可能是这样：
+
+```text
+新增商品返回 Long
+商品列表返回 List<Product>
+创建订单返回 String
+取消订单返回 Boolean
+失败时返回 Spring Boot 默认错误
+```
+
+这样前端或测试工具每个接口都要单独判断，不够规范。
+
+所以项目开始引入：
+
+```java
+Result<T>
+```
+
+统一格式是：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": "真正的数据"
+}
+```
+
+字段含义：
+
+```text
+code：业务状态码，0 表示成功
+message：提示信息
+data：真正返回的数据
+```
+
+`T` 是泛型，可以理解为“先占个位，具体类型以后再决定”。
+
+例如：
+
+```text
+Result<String>        data 是字符串
+Result<Long>          data 是商品 ID
+Result<Boolean>       data 是 true/false
+Result<List<Product>> data 是商品列表
+```
+
+当前已完成试点：
+
+```text
+GET /hello
+GET /product/list
+```
+
+后续会把其他商品接口和订单接口也逐步改成 `Result<T>`。
 
 ## 订单模块
 
@@ -536,12 +623,46 @@ POST /order/cancel/{orderNo}
 
 PowerShell 测中文 JSON 时可能出现乱码或问号。中文接口建议优先用 Apifox。
 
+## MockMvc JSON 测试
+
+以前 `/hello` 返回纯文本：
+
+```text
+Hello Mall Order
+```
+
+所以测试可以写：
+
+```java
+content().string("Hello Mall Order")
+```
+
+现在 `/hello` 返回 JSON：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": "Hello Mall Order"
+}
+```
+
+所以测试要改成 `jsonPath`：
+
+```java
+jsonPath("$.code").value(0)
+jsonPath("$.message").value("success")
+jsonPath("$.data").value("Hello Mall Order")
+```
+
+其中 `$` 表示 JSON 根对象，`$.data` 表示读取根对象里的 `data` 字段。
+
 ## 已验证场景
 
 商品模块：
 
 - 新增商品成功。
-- 查询商品列表成功。
+- 查询商品列表成功，并已改成 `Result<List<Product>>` 统一返回。
 - 查询商品详情成功。
 - 修改商品成功。
 - 错误参数会返回 `400 Bad Request`。
