@@ -7,6 +7,7 @@ import com.henry.mallorder.order.mapper.OrderMapper;
 import com.henry.mallorder.order.vo.OrderDetailVO;
 import com.henry.mallorder.product.entity.Product;
 import com.henry.mallorder.product.mapper.ProductMapper;
+import com.henry.mallorder.common.exception.BusinessException;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,14 +34,14 @@ public class OrderService {
     public String createOrder(CreateOrderRequest request) {
         Product product = productMapper.selectById(request.getProductId());
         if (product == null) {
-            throw new RuntimeException("商品不存在");
+            throw new BusinessException(4001,"商品不存在");
         }
 
         BigDecimal totalAmount = product.getPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
 
         int reduceResult = productMapper.reduceStock(request.getProductId(), request.getQuantity());
         if (reduceResult == 0) {
-            throw new RuntimeException("库存不足或商品已下架");
+            throw new BusinessException(4002,"库存不足或商品已下架");
         }
 
         String orderNo = generateOrderNo();
@@ -67,7 +68,7 @@ public class OrderService {
     public OrderDetailVO getOrderDetailByOrderNo(String orderNo) {
         OrderInfo orderInfo = orderMapper.selectOrderInfoByOrderNo(orderNo);
         if (orderInfo == null) {
-            throw new RuntimeException("订单不存在");
+            throw new BusinessException(4003,"订单不存在");
         }
 
         List<OrderItem> items = orderMapper.selectOrderItemsByOrderNo(orderNo);
@@ -88,24 +89,24 @@ public class OrderService {
     public boolean cancelOrder(String orderNo) {
         OrderInfo orderInfo = orderMapper.selectOrderInfoByOrderNo(orderNo);
         if (orderInfo == null) {
-            throw new RuntimeException("订单不存在");
+            throw new BusinessException(4003,"订单不存在");
         }
 
         if (Integer.valueOf(2).equals(orderInfo.getStatus())) {
-            throw new RuntimeException("订单已取消");
+            throw new BusinessException(4004,"订单已取消");
         }
 
         List<OrderItem> items = orderMapper.selectOrderItemsByOrderNo(orderNo);
 
         int updateResult = orderMapper.updateOrderStatus(orderNo, 2);
         if (updateResult == 0) {
-            throw new RuntimeException("订单取消失败");
+            throw new BusinessException(4005,"订单取消失败");
         }
 
         for (OrderItem item : items) {
             int increaseResult = productMapper.increaseStock(item.getProductId(), item.getQuantity());
             if (increaseResult == 0) {
-                throw new RuntimeException("恢复库存失败");
+                throw new BusinessException(4006,"恢复库存失败");
             }
         }
 

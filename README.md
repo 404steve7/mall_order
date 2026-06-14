@@ -27,7 +27,9 @@
 - 下单时扣减商品库存
 - 取消订单时恢复商品库存
 - 下单和取消订单接口使用 `@Transactional` 保证事务一致性
-- 已开始引入统一返回 `Result<T>`：`GET /hello`、`GET /product/list`
+- 所有业务接口统一返回 `Result<T>`
+- 使用 `BusinessException` 表示业务失败
+- 使用 `GlobalExceptionHandler` 统一处理异常返回
 - 商品和订单 SQL 初始化脚本
 
 ## 项目结构
@@ -63,6 +65,7 @@ mall_order_demo
 - `dto`：接收请求参数，例如 `ProductCreateRequest`、`CreateOrderRequest`。
 - `vo`：组织返回给前端的数据，例如 `OrderDetailVO`。
 - `common`：通用代码，例如统一返回对象 `Result<T>`。
+- `common/exception`：统一异常处理，例如 `BusinessException`、`GlobalExceptionHandler`。
 - `resources/mapper`：MyBatis XML SQL 文件。
 - `sql/init.sql`：数据库初始化 SQL。
 - `docs/api.md`：接口文档。
@@ -232,6 +235,7 @@ OrderService
 | MyBatis | Mapper 接口 + XML SQL |
 | 参数校验 | DTO 中使用 `@NotBlank`、`@NotNull`、`@Min` |
 | 统一返回 | `Result<T>` 包装 `code / message / data` |
+| 全局异常处理 | `BusinessException` + `GlobalExceptionHandler` |
 | VO 返回对象 | `OrderDetailVO` 返回订单主信息和明细列表 |
 | 事务 | 创建订单、取消订单接口使用 `@Transactional` |
 | SQL 安全扣库存 | `UPDATE product SET stock = stock - quantity WHERE stock >= quantity` |
@@ -241,6 +245,6 @@ OrderService
 
 ## 当前说明
 
-当前已开始改造统一返回：`GET /hello` 和 `GET /product/list` 已返回 `Result<T>` 格式。其他接口后续会继续统一。
+当前商品接口、订单接口和健康检查接口都已统一返回 `Result<T>` 格式。
 
-当前错误返回仍使用 Spring Boot 默认格式。后续会补充全局异常处理、登录拦截器、AOP 日志、Redis 缓存和 RocketMQ 消息。
+当前业务错误已通过 `BusinessException` 和 `GlobalExceptionHandler` 返回统一 JSON。后续会继续补充登录拦截器、AOP 日志、Redis 缓存和 RocketMQ 消息。

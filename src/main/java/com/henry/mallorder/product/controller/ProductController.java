@@ -22,8 +22,8 @@ public class ProductController {
         this.productService = productService;
     }
     @PostMapping("/add")
-    public Long addProduct(@Valid @RequestBody ProductCreateRequest request){
-        return productService.createProduct(request);
+    public Result<Long> addProduct(@Valid @RequestBody ProductCreateRequest request){
+        return Result.success(productService.createProduct(request));
     }
 
     @GetMapping("/list")
@@ -32,12 +32,12 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public Product getProduct(@PathVariable("id") Long id){
-        return productService.getProductById(id);
+    public Result<Product> getProduct(@PathVariable("id") Long id){
+        return Result.success(productService.getProductById(id));
     }
 
     @PutMapping("/{id}")
-    public Boolean updateProduct(@PathVariable("id") Long id, @Valid @RequestBody ProductUpdateRequest request){
-        return productService.updateProduct(id, request);
+    public Result<Boolean> updateProduct(@PathVariable("id") Long id, @Valid @RequestBody ProductUpdateRequest request){
+        return Result.success(productService.updateProduct(id, request));
     }
 }

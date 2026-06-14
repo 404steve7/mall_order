@@ -51,6 +51,8 @@ com.henry.mallorder
 - `@Valid`：触发参数校验。
 - `@RequestBody`：把 JSON 请求体转换成 Java 对象。
 - `@PathVariable`：读取 URL 路径里的参数。
+- `@RestControllerAdvice`：全局处理 Controller 抛出的异常。
+- `@ExceptionHandler`：指定某种异常应该由哪个方法处理。
 
 ## 后端分层
 
@@ -208,7 +210,7 @@ ProductMapper.xml 的 INSERT SQL
 product 表
 ```
 
-当前 `GET /product/list` 已经改成统一返回：
+当前商品接口已经改成统一返回。例如 `GET /product/list`：
 
 ```java
 public Result<List<Product>> listProducts() {
@@ -284,14 +286,105 @@ Result<Boolean>       data 是 true/false
 Result<List<Product>> data 是商品列表
 ```
 
-当前已完成试点：
+当前已完成：
 
 ```text
 GET /hello
+POST /product/add
 GET /product/list
+GET /product/{id}
+PUT /product/{id}
+POST /order/create
+GET /order/{orderNo}
+POST /order/cancel/{orderNo}
 ```
 
-后续会把其他商品接口和订单接口也逐步改成 `Result<T>`。
+也就是说，成功接口现在都会返回 `Result<T>`。
+
+## 全局异常处理
+
+最开始业务失败时，代码直接抛：
+
+```java
+throw new RuntimeException("订单已取消");
+```
+
+这种写法有两个问题：
+
+```text
+1. RuntimeException 太宽泛，不知道是业务失败还是系统错误。
+2. Spring Boot 默认会返回 500，看不出真正原因。
+```
+
+所以项目新增了：
+
+```text
+BusinessException
+GlobalExceptionHandler
+```
+
+`BusinessException` 专门表示业务失败：
+
+```java
+throw new BusinessException(4004, "订单已取消");
+```
+
+它包含：
+
+```text
+code：业务错误码
+message：错误提示
+```
+
+`GlobalExceptionHandler` 会统一接住异常：
+
+```java
+@ExceptionHandler(BusinessException.class)
+public Result<Void> handleBusinessException(BusinessException e) {
+    return Result.fail(e.getCode(), e.getMessage());
+}
+```
+
+所以业务失败会返回：
+
+```json
+{
+  "code": 4004,
+  "message": "订单已取消",
+  "data": null
+}
+```
+
+如果是未知系统异常，会返回：
+
+```json
+{
+  "code": 5000,
+  "message": "系统异常",
+  "data": null
+}
+```
+
+这样做的好处：
+
+```text
+成功返回统一
+业务失败返回统一
+系统异常不会暴露内部细节
+Apifox 和前端更容易判断结果
+```
+
+当前业务错误码：
+
+```text
+4001 商品不存在
+4002 库存不足或商品已下架
+4003 订单不存在
+4004 订单已取消
+4005 订单取消失败
+4006 恢复库存失败
+5000 系统异常
+```
 
 ## 订单模块
 
@@ -452,7 +545,7 @@ POST /order/cancel/{orderNo}
 
 ```java
 if (Integer.valueOf(2).equals(orderInfo.getStatus())) {
-    throw new RuntimeException("订单已取消");
+    throw new BusinessException(4004, "订单已取消");
 }
 ```
 
@@ -509,7 +602,7 @@ Controller 参数上加：
 
 表示请求体中的 JSON 会转换成 Java 对象，并触发参数校验。
 
-当前还没有全局异常处理，校验失败时返回 Spring Boot 默认的 `400 Bad Request`。
+当前已经有业务异常的全局处理。参数校验异常后续还会继续优化，目前校验失败仍可能返回 Spring Boot 默认的 `400 Bad Request`。
 
 ## MyBatis Mapper 和 XML
 
@@ -679,13 +772,16 @@ jsonPath("$.data").value("Hello Mall Order")
 - 取消订单后，订单状态会从 `1` 变成 `2`。
 - 取消订单后，商品库存会恢复。
 - 重复取消订单时会报错，库存不会重复增加。
+- 商品不存在会返回 `code = 4001`。
+- 库存不足会返回 `code = 4002`。
+- 订单不存在会返回 `code = 4003`。
+- 重复取消会返回 `code = 4004`。
 
 ## 后续计划
 
 后续会继续补：
 
-- 统一返回结果 `Result<T>`。
-- 全局异常处理 `GlobalExceptionHandler`。
+- 参数校验异常统一返回。
 - 登录拦截器。
 - AOP 请求日志。
 - Redis 商品缓存和库存锁。

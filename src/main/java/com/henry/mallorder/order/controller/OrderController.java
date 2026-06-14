@@ -3,6 +3,7 @@ package com.henry.mallorder.order.controller;
 import com.henry.mallorder.order.dto.CreateOrderRequest;
 import com.henry.mallorder.order.service.OrderService;
 import com.henry.mallorder.order.vo.OrderDetailVO;
+import com.henry.mallorder.common.Result;
 
 import jakarta.validation.Valid;
 
@@ -19,17 +20,17 @@ public class OrderController {
     }
 
     @PostMapping("/create")
-    public String createOrder(@Valid @RequestBody CreateOrderRequest request) {
-        return orderService.createOrder(request);
+    public Result<String> createOrder(@Valid @RequestBody CreateOrderRequest request) {
+        return Result.success(orderService.createOrder(request));
     }
 
     @GetMapping("/{orderNo}")
-    public OrderDetailVO getOrderInfo(@PathVariable("orderNo") String orderNo) {
-        return orderService.getOrderDetailByOrderNo(orderNo);
+    public Result<OrderDetailVO> getOrderInfo(@PathVariable("orderNo") String orderNo) {
+        return Result.success(orderService.getOrderDetailByOrderNo(orderNo));
     }
 
     @PostMapping("/cancel/{orderNo}")
-    public Boolean cancelOrder(@PathVariable("orderNo") String orderNo) {
-        return orderService.cancelOrder(orderNo);
+    public Result<Boolean> cancelOrder(@PathVariable("orderNo") String orderNo) {
+        return Result.success(orderService.cancelOrder(orderNo));
     }
 }

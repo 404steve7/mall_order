@@ -10,9 +10,9 @@
 http://localhost:8080
 ```
 
-当前正在逐步引入统一返回对象 `Result<T>`。已经完成统一返回的接口会返回 `code / message / data` 格式。
+当前接口已统一使用 `Result<T>` 返回对象。成功和业务失败都会返回 `code / message / data` 格式。
 
-当前还没有全局异常处理。参数错误或业务异常可能返回 Spring Boot 默认错误格式，后续会统一优化。
+当前业务异常已通过 `BusinessException` 和 `GlobalExceptionHandler` 统一处理。参数校验异常后续还会继续优化。
 
 ## 健康检查
 
@@ -48,8 +48,12 @@ http://localhost:8080
 
 响应示例：
 
-```text
-4
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": 4
+}
 ```
 
 参数说明：
@@ -84,7 +88,7 @@ http://localhost:8080
 }
 ```
 
-说明：当前 `GET /product/list` 已改为统一返回格式，真正的商品列表放在 `data` 字段中。
+说明：真正的商品列表放在 `data` 字段中。
 
 ### GET /product/{id}
 
@@ -106,13 +110,17 @@ GET /product/4
 
 ```json
 {
-  "id": 4,
-  "productName": "修改后的商品",
-  "price": 88.80,
-  "stock": 45,
-  "status": 1,
-  "createTime": "2026-06-09T23:16:57",
-  "updateTime": "2026-06-10T20:06:21"
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 4,
+    "productName": "修改后的商品00",
+    "price": 88.80,
+    "stock": 50,
+    "status": 1,
+    "createTime": "2026-06-09T23:16:57",
+    "updateTime": "2026-06-11T23:44:05"
+  }
 }
 ```
 
@@ -139,8 +147,12 @@ GET /product/4
 
 响应示例：
 
-```text
-true
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": true
+}
 ```
 
 参数说明：
@@ -193,8 +205,12 @@ true
 
 响应示例：
 
-```text
-OD20260610200621967
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": "OD20260614162049773"
+}
 ```
 
 参数说明：
@@ -236,24 +252,28 @@ GET /order/OD20260610200621967
 
 ```json
 {
-  "orderNo": "OD20260610200621967",
-  "userId": 1001,
-  "totalAmount": 444.00,
-  "status": 2,
-  "createTime": "2026-06-10T20:06:21",
-  "updateTime": "2026-06-11T23:44:05",
-  "items": [
-    {
-      "id": 1,
-      "orderNo": "OD20260610200621967",
-      "productId": 4,
-      "productName": "修改后的商品00",
-      "productPrice": 88.80,
-      "quantity": 5,
-      "totalAmount": 444.00,
-      "createTime": "2026-06-10T20:06:21"
-    }
-  ]
+  "code": 0,
+  "message": "success",
+  "data": {
+    "orderNo": "OD20260614162049773",
+    "userId": 1001,
+    "totalAmount": 88.80,
+    "status": 1,
+    "createTime": "2026-06-14T16:20:49",
+    "updateTime": "2026-06-14T16:20:49",
+    "items": [
+      {
+        "id": 3,
+        "orderNo": "OD20260614162049773",
+        "productId": 4,
+        "productName": "修改后的商品00",
+        "productPrice": 88.80,
+        "quantity": 1,
+        "totalAmount": 88.80,
+        "createTime": "2026-06-14T16:20:49"
+      }
+    ]
+  }
 }
 ```
 
@@ -291,8 +311,12 @@ POST /order/cancel/OD20260610200621967
 
 响应示例：
 
-```text
-true
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": true
+}
 ```
 
 取消订单时会执行：
@@ -326,15 +350,17 @@ true
 }
 ```
 
-当前行为：
+当前响应示例：
 
-```text
-不会创建订单
-不会扣减库存
-可能返回 Spring Boot 默认 500 错误
+```json
+{
+  "code": 4002,
+  "message": "库存不足或商品已下架",
+  "data": null
+}
 ```
 
-说明：后续会通过全局异常处理把这类错误改成更清楚的业务错误返回。
+说明：不会创建订单，也不会扣减库存。
 
 ### 商品不存在示例
 
@@ -348,11 +374,34 @@ true
 }
 ```
 
-当前行为：
+当前响应示例：
+
+```json
+{
+  "code": 4001,
+  "message": "商品不存在",
+  "data": null
+}
+```
+
+说明：不会创建订单。
+
+### 订单不存在示例
+
+错误请求：
 
 ```text
-不会创建订单
-可能返回 Spring Boot 默认 500 错误
+GET /order/OD_NOT_EXISTS
+```
+
+当前响应示例：
+
+```json
+{
+  "code": 4003,
+  "message": "订单不存在",
+  "data": null
+}
 ```
 
 ### 重复取消订单示例
@@ -363,11 +412,14 @@ true
 POST /order/cancel/OD20260610200621967
 ```
 
-当前行为：
+当前响应示例：
 
-```text
-不会再次恢复库存
-可能返回 Spring Boot 默认 500 错误
+```json
+{
+  "code": 4004,
+  "message": "订单已取消",
+  "data": null
+}
 ```
 
-说明：当前业务逻辑已经能阻止重复取消，但错误格式还没有统一。后续会用全局异常处理把它改成更清晰的业务错误返回。
+说明：不会再次恢复库存。
