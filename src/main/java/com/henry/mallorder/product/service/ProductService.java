@@ -4,6 +4,8 @@ import com.henry.mallorder.product.dto.ProductCreateRequest;
 import com.henry.mallorder.product.dto.ProductUpdateRequest;
 import com.henry.mallorder.product.entity.Product;
 import com.henry.mallorder.product.mapper.ProductMapper;
+import com.henry.mallorder.common.exception.BusinessException;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -34,7 +36,11 @@ public class ProductService {
     }
 
     public Product getProductById(Long id){
-        return productMapper.selectById(id);
+        Product product = productMapper.selectById(id);
+        if(product == null){
+            throw new BusinessException(4001,"商品不存在");
+        }
+        return product;
     }
 
     public boolean updateProduct(Long id, ProductUpdateRequest request){

@@ -30,6 +30,8 @@
 - 所有业务接口统一返回 `Result<T>`
 - 使用 `BusinessException` 表示业务失败
 - 使用 `GlobalExceptionHandler` 统一处理异常返回
+- 路径参数类型错误统一返回 `4000 参数错误`
+- 已补充基础自动化测试，覆盖成功返回、业务失败和参数错误
 - 商品和订单 SQL 初始化脚本
 
 ## 项目结构
@@ -238,9 +240,10 @@ OrderService
 | 全局异常处理 | `BusinessException` + `GlobalExceptionHandler` |
 | VO 返回对象 | `OrderDetailVO` 返回订单主信息和明细列表 |
 | 事务 | 创建订单、取消订单接口使用 `@Transactional` |
+| 数据库索引 | `idx_product_name`、`uk_order_no`、`idx_user_id`、`idx_order_no`、`idx_product_id` |
 | SQL 安全扣库存 | `UPDATE product SET stock = stock - quantity WHERE stock >= quantity` |
 | 库存恢复 | 取消订单时 `UPDATE product SET stock = stock + quantity` |
-| 接口测试 | 使用 Apifox 测商品和订单接口 |
+| 接口测试 | 使用 Apifox 手工测试，使用 MockMvc 自动化测试 |
 | Git | 按阶段 commit 并 push 到 GitHub |
 
 ## 当前说明
@@ -248,3 +251,13 @@ OrderService
 当前商品接口、订单接口和健康检查接口都已统一返回 `Result<T>` 格式。
 
 当前业务错误已通过 `BusinessException` 和 `GlobalExceptionHandler` 返回统一 JSON。后续会继续补充登录拦截器、AOP 日志、Redis 缓存和 RocketMQ 消息。
+
+当前自动化测试已经覆盖：
+
+- `/hello` 成功返回。
+- `/product/list` 成功返回数组结构。
+- `/product/999999` 商品不存在。
+- `/product/notExist` 路径参数类型错误。
+- `/order/create` 商品不存在。
+- `/order/create` 库存不足。
+- `/order/OD_NOT_EXIST` 订单不存在。

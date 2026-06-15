@@ -377,6 +377,7 @@ Apifox 和前端更容易判断结果
 当前业务错误码：
 
 ```text
+4000 参数错误
 4001 商品不存在
 4002 库存不足或商品已下架
 4003 订单不存在
@@ -384,6 +385,30 @@ Apifox 和前端更容易判断结果
 4005 订单取消失败
 4006 恢复库存失败
 5000 系统异常
+```
+
+`4000 参数错误` 当前主要处理路径参数类型错误。
+
+例如接口需要：
+
+```text
+GET /product/{id}
+```
+
+其中 `id` 是 `Long`。如果请求：
+
+```text
+GET /product/notExist
+```
+
+Spring 会在进入 Service 前就发现 `notExist` 不能转换成 Long，于是抛出 `MethodArgumentTypeMismatchException`。项目现在会把它统一返回成：
+
+```json
+{
+  "code": 4000,
+  "message": "参数错误",
+  "data": null
+}
 ```
 
 ## 订单模块
@@ -639,6 +664,53 @@ useGeneratedKeys="true" keyProperty="id"
 
 表示插入成功后，把数据库自动生成的自增 ID 回填到 Java 对象的 `id` 字段。
 
+## SQL 和索引
+
+HR 要求里提到了基本 SQL 和索引。当前项目已经用到了：
+
+```text
+SELECT 查询
+INSERT 新增
+UPDATE 修改
+WHERE 条件
+ORDER BY 排序
+INDEX 普通索引
+UNIQUE KEY 唯一索引
+```
+
+当前建表 SQL 里的索引：
+
+```sql
+INDEX idx_product_name (product_name)
+UNIQUE KEY uk_order_no (order_no)
+KEY idx_user_id (user_id)
+KEY idx_order_no (order_no)
+KEY idx_product_id (product_id)
+```
+
+索引可以理解成数据库的目录。
+
+如果没有索引，数据库可能要从第一行扫到最后一行。  
+有了合适索引，数据库可以更快定位数据。
+
+当前项目里几个索引的目的：
+
+```text
+idx_product_name：以后按商品名搜索时更快
+uk_order_no：保证订单号唯一，并且按订单号查询更快
+idx_user_id：以后按用户查询订单时更快
+idx_order_no：按订单号查询订单明细更快
+idx_product_id：以后按商品查询订单明细更快
+```
+
+避坑点：
+
+```text
+索引不是越多越好。
+索引会加快查询，但会增加写入和维护成本。
+真实项目要根据查询场景设计索引。
+```
+
 ## 扣库存 SQL
 
 下单时使用一条 SQL 安全扣库存：
@@ -698,6 +770,23 @@ WHERE id = #{productId}
 
 如果订单状态改成功了，但恢复库存失败，事务会回滚，避免出现订单显示已取消但库存没有加回来的问题。
 
+数据库事务可以简单理解成：
+
+```text
+一组数据库操作，要么全部成功，要么全部失败。
+```
+
+它有四个常见特性，简称 ACID：
+
+```text
+A 原子性：要么全做，要么全不做
+C 一致性：操作前后数据规则不能被破坏
+I 隔离性：多个事务之间尽量互不干扰
+D 持久性：提交后数据真正保存下来
+```
+
+在当前项目里，事务最重要的是保护订单和库存一致。
+
 ## Apifox 接口测试
 
 已通过 Apifox 测通：
@@ -750,6 +839,48 @@ jsonPath("$.data").value("Hello Mall Order")
 
 其中 `$` 表示 JSON 根对象，`$.data` 表示读取根对象里的 `data` 字段。
 
+## 当前自动化测试
+
+当前测试文件：
+
+```text
+src/test/java/com/henry/mallorder/MallOrderApplicationTests.java
+```
+
+已经覆盖：
+
+```text
+项目能启动
+/hello 成功返回
+/product/list 返回 Result 且 data 是数组
+/product/999999 返回商品不存在
+/product/notExist 返回参数错误
+/order/create 商品不存在
+/order/create 库存不足
+/order/OD_NOT_EXIST 订单不存在
+```
+
+为什么先不写“创建订单成功”的自动化测试：
+
+```text
+创建订单成功会真实写数据库
+会扣商品库存
+会插入 order_info
+会插入 order_item
+每跑一次测试，数据都会变化
+```
+
+学习阶段先优先测试“不修改数据库”的失败场景，更稳定。
+
+后续如果要测成功下单，可以考虑：
+
+```text
+使用测试数据库
+每次测试前准备固定数据
+测试后回滚事务
+或者清理测试数据
+```
+
 ## 已验证场景
 
 商品模块：
@@ -758,7 +889,8 @@ jsonPath("$.data").value("Hello Mall Order")
 - 查询商品列表成功，并已改成 `Result<List<Product>>` 统一返回。
 - 查询商品详情成功。
 - 修改商品成功。
-- 错误参数会返回 `400 Bad Request`。
+- 路径参数类型错误会返回 `code = 4000`。
+- 请求体参数校验异常后续还要继续统一。
 
 订单模块：
 
