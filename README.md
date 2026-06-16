@@ -30,8 +30,8 @@
 - 所有业务接口统一返回 `Result<T>`
 - 使用 `BusinessException` 表示业务失败
 - 使用 `GlobalExceptionHandler` 统一处理异常返回
-- 路径参数类型错误统一返回 `4000 参数错误`
-- 已补充 10 个自动化测试，覆盖成功返回、业务失败、参数错误、成功下单、取消订单和重复取消
+- 路径参数类型错误和请求体校验错误统一返回 `4000 参数错误`
+- 已补充 11 个自动化测试，覆盖成功返回、业务失败、参数错误、成功下单、取消订单和重复取消
 - 商品和订单 SQL 初始化脚本
 
 ## 项目结构
@@ -227,30 +227,31 @@ OrderService
 
 取消订单接口也使用 `@Transactional`，保证修改订单状态和恢复库存要么都成功，要么都失败。
 
-## 知识点对应
+## 项目能力覆盖
 
-| 知识点 | 项目体现 |
-| --- | --- |
-| MVC 分层 | Controller / Service / Mapper |
-| 依赖注入 | 构造器注入 Service、Mapper |
-| MySQL | 商品表、订单主表、订单明细表 |
-| MyBatis | Mapper 接口 + XML SQL |
-| 参数校验 | DTO 中使用 `@NotBlank`、`@NotNull`、`@Min` |
-| 统一返回 | `Result<T>` 包装 `code / message / data` |
-| 全局异常处理 | `BusinessException` + `GlobalExceptionHandler` |
-| VO 返回对象 | `OrderDetailVO` 返回订单主信息和明细列表 |
-| 事务 | 创建订单、取消订单接口使用 `@Transactional` |
-| 数据库索引 | `idx_product_name`、`uk_order_no`、`idx_user_id`、`idx_order_no`、`idx_product_id` |
-| SQL 安全扣库存 | `UPDATE product SET stock = stock - quantity WHERE stock >= quantity` |
-| 库存恢复 | 取消订单时 `UPDATE product SET stock = stock + quantity` |
-| 接口测试 | 使用 Apifox 手工测试，使用 MockMvc 自动化测试 |
-| Git | 按阶段 commit 并 push 到 GitHub |
+| 能力点 | 当前体现 | 后续补充 |
+| --- | --- | --- |
+| MVC 分层 | Controller / Service / Mapper 分层清楚 | 继续保持新增模块同样分层 |
+| 依赖注入 | 构造器注入 Service、Mapper | 用户模块继续使用构造器注入 |
+| 参数校验 | DTO 中使用 `@NotBlank`、`@NotNull`、`@Min`，校验失败统一返回 `Result<T>` | 用户模块继续沿用参数校验 |
+| 统一返回 | `Result<T>` 包装 `code / message / data` | 新接口继续沿用统一格式 |
+| 全局异常处理 | `BusinessException` + `GlobalExceptionHandler` | 新异常继续统一转换成 `Result<T>` |
+| 事务 | 创建订单、取消订单使用 `@Transactional` | 继续围绕库存一致性复盘 |
+| 数据库 SQL | 商品、订单主表、订单明细表的增删改查 | 新增用户表和登录相关 SQL |
+| 数据库索引 | `idx_product_name`、`uk_order_no`、`idx_user_id` 等 | 用户名唯一索引 |
+| 缓存 | 暂未接入 | Redis 商品详情缓存 |
+| 分布式锁 | 暂未接入 | Redis 库存锁学习版 |
+| 拦截器 | 暂未接入 | 登录拦截器保护订单接口 |
+| AOP | 暂未接入 | 请求日志和接口耗时统计 |
+| 消息队列 | 暂未接入 | RocketMQ 订单消息学习版 |
+| 接口测试 | Apifox 手工测试，MockMvc 自动化测试 | 补用户、登录、拦截器测试 |
+| Git | 按阶段 commit 并 push 到 GitHub | 封版前整理文档并提交 |
 
 ## 当前说明
 
 当前商品接口、订单接口和健康检查接口都已统一返回 `Result<T>` 格式。
 
-当前业务错误已通过 `BusinessException` 和 `GlobalExceptionHandler` 返回统一 JSON。后续会继续补充登录拦截器、AOP 日志、Redis 缓存和 RocketMQ 消息。
+当前业务错误和请求体参数校验错误已通过 `GlobalExceptionHandler` 返回统一 JSON。后续会继续补充登录拦截器、AOP 日志、Redis 缓存和 RocketMQ 消息。
 
 当前自动化测试已经覆盖：
 
@@ -258,9 +259,21 @@ OrderService
 - `/product/list` 成功返回数组结构。
 - `/product/999999` 商品不存在。
 - `/product/notExist` 路径参数类型错误。
+- `/order/create` 请求体参数校验错误。
 - `/order/create` 商品不存在。
 - `/order/create` 库存不足。
 - `/order/create` 正常下单成功并返回订单号。
 - `/order/OD_NOT_EXIST` 订单不存在。
 - `/order/cancel/{orderNo}` 取消订单成功，订单状态变为已取消。
 - 重复取消同一订单返回 `4004 订单已取消`，避免库存重复恢复。
+
+## 后续规划
+
+后续会围绕“项目完整性”和“能讲清楚链路”继续完善，不追求复杂业务堆叠。
+
+- 用户登录：新增简单用户表、注册、登录和查询当前用户。
+- 登录拦截器：进入 Controller 前检查登录状态，订单接口需要登录。
+- AOP 请求日志：记录接口路径、请求方式和耗时，不侵入业务代码。
+- Redis 缓存和库存锁：商品详情加缓存，下单流程加入库存锁学习版。
+- RocketMQ 订单消息：下单成功后发送订单消息，消费者接收并打印日志。
+- 文档与复习封版：同步 README、接口文档、学习笔记，并准备项目讲解。

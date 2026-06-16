@@ -80,7 +80,7 @@ class MallOrderApplicationTests {
 	}
 
 	@Test
-	void createOrderReturnsBuinessErrorWhenStockNotEnough() throws Exception {
+	void createOrderReturnsBusinessErrorWhenStockNotEnough() throws Exception {
 		String requestBody = """
 				{
 					"userId": 1001,
@@ -108,11 +108,30 @@ class MallOrderApplicationTests {
 	}
 
 	@Test
+	void createOrderReturnsParamErrorWhenQuantityInvalid() throws Exception {
+		String requestBody = """
+				{
+					"userId": 1001,
+					"productId": 4,
+					"quantity": 0
+					}
+		""";
+
+		mockMvc.perform(post("/order/create")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(4000))
+				.andExpect(jsonPath("$.message").value("购买数量必须大于0"))
+				.andExpect(jsonPath("$.data").isEmpty());
+	}
+
+	@Test
 	@Transactional
-	void createOrderReturnsOrderNoWhenProductNotExist() throws Exception {
+	void createOrderReturnsOrderNoWhenProductNotExists() throws Exception {
 		Product product = new Product();
 		product.setProductName("测试下单商品");
-		product.setPrice(new BigDecimal(10.00));
+		product.setPrice(new BigDecimal("10.00"));
 		product.setStock(10);
 		product.setStatus(1);
 		productMapper.insert(product);
@@ -139,7 +158,7 @@ class MallOrderApplicationTests {
 	void cancelOrderReturnsSuccessWhenProductExists() throws Exception {
 		Product product = new Product();
 		product.setProductName("测试取消订单商品");
-		product.setPrice(new BigDecimal(10.00));
+		product.setPrice(new BigDecimal("10.00"));
 		product.setStock(10);
 		product.setStatus(1);
 		productMapper.insert(product);
@@ -179,7 +198,7 @@ class MallOrderApplicationTests {
 	void cancelOrderReturnsBusinessErrorWhenOrderAlreadyCancelled() throws Exception {
 		Product product = new Product();
 		product.setProductName("测试重复取消订单商品");
-		product.setPrice(new BigDecimal(10.00));
+		product.setPrice(new BigDecimal("10.00"));
 		product.setStock(10);
 		product.setStatus(1);
 		productMapper.insert(product);

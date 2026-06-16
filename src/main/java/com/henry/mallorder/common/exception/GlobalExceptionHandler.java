@@ -5,7 +5,8 @@ import com.henry.mallorder.common.Result;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -18,6 +19,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public Result<Void> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e){
         return Result.fail(4000,"参数错误");
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public Result<Void> handleMethodArgumentNotValidException(MethodArgumentNotValidException e){
+        FieldError fieldError = e.getBindingResult().getFieldError();
+
+        if(fieldError==null){
+            return Result.fail(4000,"参数错误");
+        }
+        return Result.fail(4000,fieldError.getDefaultMessage());
     }
 
     @ExceptionHandler(value=Exception.class)
