@@ -84,6 +84,7 @@ mall_order_demo
 已创建表：
 
 - `product`：商品表。
+- `user_info`：用户表。
 - `order_info`：订单主表。
 - `order_item`：订单明细表。
 
@@ -237,8 +238,8 @@ OrderService
 | 统一返回 | `Result<T>` 包装 `code / message / data` | 新接口继续沿用统一格式 |
 | 全局异常处理 | `BusinessException` + `GlobalExceptionHandler` | 新异常继续统一转换成 `Result<T>` |
 | 事务 | 创建订单、取消订单使用 `@Transactional` | 继续围绕库存一致性复盘 |
-| 数据库 SQL | 商品、订单主表、订单明细表的增删改查 | 新增用户表和登录相关 SQL |
-| 数据库索引 | `idx_product_name`、`uk_order_no`、`idx_user_id` 等 | 用户名唯一索引 |
+| 数据库 SQL | 商品表、用户表、订单主表、订单明细表 | 补用户接口测试 |
+| 数据库索引 | `idx_product_name`、`uk_order_no`、`uk_username`、`idx_user_id` 等 | 后续按查询场景继续补充 |
 | 缓存 | 暂未接入 | Redis 商品详情缓存 |
 | 分布式锁 | 暂未接入 | Redis 库存锁学习版 |
 | 拦截器 | 暂未接入 | 登录拦截器保护订单接口 |
@@ -252,6 +253,8 @@ OrderService
 当前商品接口、订单接口和健康检查接口都已统一返回 `Result<T>` 格式。
 
 当前业务错误和请求体参数校验错误已通过 `GlobalExceptionHandler` 返回统一 JSON。后续会继续补充登录拦截器、AOP 日志、Redis 缓存和 RocketMQ 消息。
+
+用户模块已完成前置结构：`user_info` 表、User Entity、注册/登录 DTO、UserMapper、UserMapper XML、UserService。当前还没有暴露用户 Controller 接口，注册、登录和查询当前用户接口会在后续继续完成。
 
 当前自动化测试已经覆盖：
 
@@ -271,7 +274,7 @@ OrderService
 
 后续会围绕“项目完整性”和“能讲清楚链路”继续完善，不追求复杂业务堆叠。
 
-- 用户登录：新增简单用户表、注册、登录和查询当前用户。
+- 用户登录：继续补注册、登录和查询当前用户接口。
 - 登录拦截器：进入 Controller 前检查登录状态，订单接口需要登录。
 - AOP 请求日志：记录接口路径、请求方式和耗时，不侵入业务代码。
 - Redis 缓存和库存锁：商品详情加缓存，下单流程加入库存锁学习版。

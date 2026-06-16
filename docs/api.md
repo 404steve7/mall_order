@@ -483,7 +483,9 @@ POST /order/cancel/OD20260610200621967
 
 ## 计划中接口
 
-下面接口是后续可能新增的学习版接口，当前还不是可用接口。
+下面接口是用户模块后续会继续补充的学习版接口，当前还不是可用接口。
+
+当前已经准备好 `user_info` 表、User Entity、注册/登录 DTO、UserMapper、UserMapper XML 和 UserService。还没有对外暴露 Controller 接口。
 
 ### POST /user/register
 

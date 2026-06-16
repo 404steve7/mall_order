@@ -158,6 +158,7 @@ mall_order_demo
 当前表：
 
 - `product`：商品表。
+- `user_info`：用户表。
 - `order_info`：订单主表。
 - `order_item`：订单明细表。
 
@@ -605,6 +606,8 @@ DTO 对应请求参数。
 ProductCreateRequest
 ProductUpdateRequest
 CreateOrderRequest
+UserRegisterRequest
+UserLoginRequest
 ```
 
 不要让前端传 `id`、`createTime`、`updateTime` 这种应该由系统或数据库控制的字段。
@@ -1041,7 +1044,19 @@ void createOrderReturnsOrderNoWhenProductExists() {
 
 ### 用户登录
 
-后续会新增简单用户模块：
+用户模块当前已经完成前置结构：
+
+```text
+user_info 表
+User Entity
+UserRegisterRequest
+UserLoginRequest
+UserMapper
+UserMapper.xml
+UserService
+```
+
+后续会继续补充对外接口：
 
 ```text
 用户注册
@@ -1058,6 +1073,22 @@ void createOrderReturnsOrderNoWhenProductExists() {
 前端后续请求带上 token
 后端根据 token 判断是谁在访问
 ```
+
+当前 `UserService` 里先使用 `ConcurrentHashMap<String, Long>` 保存 token 和用户 ID 的关系：
+
+```text
+token -> userId
+```
+
+这属于学习版方案。它能帮助理解登录态，但也有明显限制：
+
+```text
+项目重启后 token 会丢
+多台服务器之间不能共享
+真实项目通常会使用 Redis、JWT 或更完整的认证方案
+```
+
+当前密码也是学习版明文保存，后续讲项目时要明确说明：真实项目必须做密码加密，不能明文保存。
 
 ### 拦截器
 
@@ -1146,8 +1177,9 @@ Message：消息内容
 ### 6 月 17 日：参数校验和用户模块
 
 - 已统一请求体校验异常返回。
-- 新增用户表。
-- 实现注册、登录、查询当前用户。
+- 已新增用户表。
+- 已完成用户 Entity、DTO、Mapper、XML、Service。
+- 继续实现注册、登录、查询当前用户 Controller。
 - 补用户模块基础测试。
 
 ### 6 月 18 日：登录拦截器和 AOP

@@ -15,6 +15,17 @@ CREATE TABLE IF NOT EXISTS product (
     INDEX idx_product_name (product_name)
     ) COMMENT='商品表';
 
+CREATE TABLE IF NOT EXISTS user_info(
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '用户ID',
+    username VARCHAR(50) NOT NULL COMMENT '用户名',
+    password VARCHAR(100) NOT NULL COMMENT '密码，暂时明文保存',
+    nickname VARCHAR(50) DEFAULT NULL COMMENT '昵称',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1-正常，0-禁用',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_username(username)
+) COMMENT = '用户表';
+
 CREATE TABLE IF NOT EXISTS order_info (
                                           id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '订单ID',
                                           order_no VARCHAR(64) NOT NULL COMMENT '订单号',
