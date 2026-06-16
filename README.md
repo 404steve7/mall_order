@@ -31,7 +31,7 @@
 - 使用 `BusinessException` 表示业务失败
 - 使用 `GlobalExceptionHandler` 统一处理异常返回
 - 路径参数类型错误统一返回 `4000 参数错误`
-- 已补充基础自动化测试，覆盖成功返回、业务失败和参数错误
+- 已补充 10 个自动化测试，覆盖成功返回、业务失败、参数错误、成功下单、取消订单和重复取消
 - 商品和订单 SQL 初始化脚本
 
 ## 项目结构
@@ -260,4 +260,7 @@ OrderService
 - `/product/notExist` 路径参数类型错误。
 - `/order/create` 商品不存在。
 - `/order/create` 库存不足。
+- `/order/create` 正常下单成功并返回订单号。
 - `/order/OD_NOT_EXIST` 订单不存在。
+- `/order/cancel/{orderNo}` 取消订单成功，订单状态变为已取消。
+- 重复取消同一订单返回 `4004 订单已取消`，避免库存重复恢复。

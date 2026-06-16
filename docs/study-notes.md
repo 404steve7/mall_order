@@ -839,6 +839,39 @@ jsonPath("$.data").value("Hello Mall Order")
 
 其中 `$` 表示 JSON 根对象，`$.data` 表示读取根对象里的 `data` 字段。
 
+统一返回以后，测试时通常按这个思路判断字段：
+
+```text
+code    判断这次请求整体成功还是失败
+message 判断失败原因或提示语是否正确
+data    判断真正的业务结果
+```
+
+常见例子：
+
+```java
+jsonPath("$.code").value(0)
+jsonPath("$.data").isString()
+jsonPath("$.data.status").value(2)
+jsonPath("$.message").value("订单已取消")
+```
+
+`$.data` 表示整个业务数据。  
+如果 `data` 是订单详情对象，就要继续往里面取字段，例如 `$.data.status`。  
+如果失败时 `data` 是 `null`，可以用：
+
+```java
+jsonPath("$.data").isEmpty()
+```
+
+避坑点：
+
+```text
+不要把错误提示放到 $.data 里判断。
+业务错误提示在 message 里。
+真正的业务结果才在 data 里。
+```
+
 ## 当前自动化测试
 
 当前测试文件：
@@ -857,28 +890,60 @@ src/test/java/com/henry/mallorder/MallOrderApplicationTests.java
 /product/notExist 返回参数错误
 /order/create 商品不存在
 /order/create 库存不足
+/order/create 正常下单成功并返回订单号
 /order/OD_NOT_EXIST 订单不存在
+/order/cancel/{orderNo} 取消订单成功
+重复取消同一订单返回订单已取消
 ```
 
-为什么先不写“创建订单成功”的自动化测试：
+现在一共有 10 个自动化测试。今天新增的重点是成功下单、取消订单、重复取消订单。
+
+为什么成功下单测试要加 `@Transactional`：
 
 ```text
 创建订单成功会真实写数据库
 会扣商品库存
 会插入 order_info
 会插入 order_item
-每跑一次测试，数据都会变化
+如果不处理，每跑一次测试，数据库数据都会变化
 ```
 
-学习阶段先优先测试“不修改数据库”的失败场景，更稳定。
+所以成功下单和取消订单测试使用测试事务回滚：
 
-后续如果要测成功下单，可以考虑：
+```java
+@Test
+@Transactional
+void createOrderReturnsOrderNoWhenProductExists() {
+    // 测试结束后，本次测试插入的数据会回滚
+}
+```
+
+这样做的好处：
 
 ```text
-使用测试数据库
-每次测试前准备固定数据
-测试后回滚事务
-或者清理测试数据
+可以测试真实业务链路
+不会污染本地 MySQL 数据
+不用手动删除测试产生的商品、订单和订单明细
+每次测试之间更独立
+```
+
+取消订单测试的思路：
+
+```text
+1. 先临时创建一个商品
+2. 调用 /order/create 创建订单
+3. 从返回 JSON 的 data 中取出订单号
+4. 调用 /order/cancel/{orderNo} 取消订单
+5. 再查订单详情，确认 status 已经变成 2
+```
+
+重复取消测试的思路：
+
+```text
+1. 创建订单
+2. 第一次取消，应该成功
+3. 第二次取消同一个订单，应该返回 4004 订单已取消
+4. 这样可以保护库存，避免重复取消导致库存越加越多
 ```
 
 ## 已验证场景
