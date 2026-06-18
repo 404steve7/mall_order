@@ -934,9 +934,15 @@ src/test/java/com/henry/mallorder/MallOrderApplicationTests.java
 /order/OD_NOT_EXIST 订单不存在
 /order/cancel/{orderNo} 取消订单成功
 重复取消同一订单返回订单已取消
+/user/register 用户注册成功
+/user/register 重复用户名返回用户名已存在
+/user/login 登录成功返回 token
+/user/login 密码错误返回用户名或密码错误
+/user/me 带 token 查询当前用户成功
+/user/me 不带 token 返回未登录
 ```
 
-现在一共有 11 个自动化测试。测试覆盖了统一返回、业务失败、参数错误、成功下单、取消订单和重复取消订单。
+现在一共有 17 个自动化测试。测试覆盖了统一返回、业务失败、参数错误、用户注册登录、成功下单、取消订单和重复取消订单。
 
 为什么成功下单测试要加 `@Transactional`：
 
@@ -1044,7 +1050,7 @@ void createOrderReturnsOrderNoWhenProductExists() {
 
 ### 用户登录
 
-用户模块当前已经完成前置结构：
+用户模块当前已经完成：
 
 ```text
 user_info 表
@@ -1054,14 +1060,15 @@ UserLoginRequest
 UserMapper
 UserMapper.xml
 UserService
+UserController
 ```
 
-后续会继续补充对外接口：
+已实现接口：
 
 ```text
-用户注册
-用户登录
-查询当前用户
+POST /user/register
+POST /user/login
+GET  /user/me
 ```
 
 这个模块的目标不是做复杂权限系统，而是理解登录态：
@@ -1072,6 +1079,22 @@ UserService
 后端生成 token
 前端后续请求带上 token
 后端根据 token 判断是谁在访问
+```
+
+查询当前用户时，请求头使用：
+
+```text
+X-Token: 登录成功后生成的 token
+```
+
+如果没有传 token，或者 token 无效，会返回：
+
+```json
+{
+  "code": 4010,
+  "message": "未登录",
+  "data": null
+}
 ```
 
 当前 `UserService` 里先使用 `ConcurrentHashMap<String, Long>` 保存 token 和用户 ID 的关系：
@@ -1089,6 +1112,14 @@ token -> userId
 ```
 
 当前密码也是学习版明文保存，后续讲项目时要明确说明：真实项目必须做密码加密，不能明文保存。
+
+查询当前用户时，返回前会执行：
+
+```java
+user.setPassword(null);
+```
+
+这样做是为了避免把密码返回给前端。哪怕当前只是学习版，也要养成“敏感字段不返回”的习惯。
 
 ### 拦截器
 
@@ -1179,8 +1210,8 @@ Message：消息内容
 - 已统一请求体校验异常返回。
 - 已新增用户表。
 - 已完成用户 Entity、DTO、Mapper、XML、Service。
-- 继续实现注册、登录、查询当前用户 Controller。
-- 补用户模块基础测试。
+- 已完成注册、登录、查询当前用户 Controller。
+- 已补用户模块基础测试。
 
 ### 6 月 18 日：登录拦截器和 AOP
 

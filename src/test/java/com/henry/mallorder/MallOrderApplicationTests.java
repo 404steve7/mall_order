@@ -232,4 +232,176 @@ class MallOrderApplicationTests {
 				.andExpect(jsonPath("$.message").value("订单已取消"))
 				.andExpect(jsonPath("$.data").isEmpty());
 	}
+
+	@Test
+	@Transactional
+	void registerUserReturnsUserIdWhenUsernameNotExists() throws Exception {
+
+		String username = "test_user_" + System.currentTimeMillis();
+		String requestBody = """
+				{
+					"username": "%s",
+					"password": "123456",
+					"nickname": "测试用户"
+					}
+		""".formatted(username);
+
+		mockMvc.perform(post("/user/register")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(requestBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(0))
+				.andExpect(jsonPath("$.message").value("success"))
+				.andExpect(jsonPath("$.data").isNumber());
+	}
+
+	@Test
+	@Transactional
+	void registerUserReturnsBusinessErrorWhenUsernameAlreadyExists() throws Exception {
+		String username = "test_user_" + System.currentTimeMillis();
+
+		String requestBody = """
+				{
+					"username": "%s",
+					"password": "123456",
+					"nickname": "测试用户"
+					}
+		""".formatted(username);
+
+		mockMvc.perform(post("/user/register")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(requestBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(0));
+
+		mockMvc.perform(post("/user/register")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(requestBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(4012))
+				.andExpect(jsonPath("$.message").value("用户名已存在"))
+				.andExpect(jsonPath("$.data").isEmpty());
+	}
+
+	@Test
+	@Transactional
+	void loginReturnsTokenWhenUsernameAndPasswordCorrect() throws Exception {
+		String username = "test_user_" + System.currentTimeMillis();
+		String registerBody = """
+				{
+					"username": "%s",
+					"password": "123456",
+					"nickname": "测试用户"
+					}
+		""".formatted(username);
+
+		mockMvc.perform(post("/user/register")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(registerBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(0));
+
+		String loginBody = """
+				{
+					"username": "%s",
+					"password": "123456"
+					}
+		""".formatted(username);
+
+		mockMvc.perform(post("/user/login")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(loginBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(0))
+				.andExpect(jsonPath("$.message").value("success"))
+				.andExpect(jsonPath("$.data").isString());
+
+	}
+
+	@Test
+	@Transactional
+	void loginReturnsBusinessErrorWhenPasswordWrong() throws Exception {
+		String username = "test_user_" + System.currentTimeMillis();
+
+		String registerBody = """
+				{
+					"username": "%s",
+					"password": "123456",
+					"nickname": "测试用户"
+					}
+		""".formatted(username);
+
+		mockMvc.perform(post("/user/register")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(registerBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(0));
+
+		String loginBody = """
+				{
+					"username": "%s",
+					"password": "wrong_password"
+					}
+		""".formatted(username);
+
+		mockMvc.perform(post("/user/login")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(loginBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(4011))
+				.andExpect(jsonPath("$.message").value("用户名或密码错误"))
+				.andExpect(jsonPath("$.data").isEmpty());
+	}
+
+	@Test
+	@Transactional
+	void getCurrentUserReturnsUserInfoWhenTokenValid() throws Exception {
+		String username = "test_user_" + System.currentTimeMillis();
+		String registerBody = """
+				{
+				"username": "%s",
+				"password": "123456",
+				"nickname": "测试用户"
+				}
+		""".formatted(username);
+
+		mockMvc.perform(post("/user/register")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(registerBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(0));
+
+		String loginBody = """
+				{
+				"username": "%s",
+				"password": "123456"
+				}
+				""".formatted(username);
+		MvcResult loginResult = mockMvc.perform(post("/user/login")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(loginBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(0))
+				.andReturn();
+
+		String responseBody = loginResult.getResponse().getContentAsString();
+		String token = JsonPath.read(responseBody, "$.data");
+
+		mockMvc.perform(get("/user/me")
+					.header("X-Token", token))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(0))
+				.andExpect(jsonPath("$.data.username").value(username))
+				.andExpect(jsonPath("$.data.password").isEmpty());
+	}
+
+	@Test
+	void getCurrentUserReturnsBusinessErrorWhenTokenMissing() throws Exception {
+
+		mockMvc.perform(get("/user/me"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(4010))
+				.andExpect(jsonPath("$.message").value("未登录"))
+				.andExpect(jsonPath("$.data").isEmpty());
+	}
 }

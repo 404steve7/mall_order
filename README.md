@@ -21,6 +21,9 @@
 - 商品列表：`GET /product/list`
 - 商品详情：`GET /product/{id}`
 - 商品修改：`PUT /product/{id}`
+- 用户注册：`POST /user/register`
+- 用户登录：`POST /user/login`
+- 查询当前用户：`GET /user/me`
 - 创建订单：`POST /order/create`
 - 查询订单详情：`GET /order/{orderNo}`
 - 取消订单：`POST /order/cancel/{orderNo}`
@@ -31,7 +34,7 @@
 - 使用 `BusinessException` 表示业务失败
 - 使用 `GlobalExceptionHandler` 统一处理异常返回
 - 路径参数类型错误和请求体校验错误统一返回 `4000 参数错误`
-- 已补充 11 个自动化测试，覆盖成功返回、业务失败、参数错误、成功下单、取消订单和重复取消
+- 已补充 17 个自动化测试，覆盖成功返回、业务失败、参数错误、用户登录、成功下单、取消订单和重复取消
 - 商品和订单 SQL 初始化脚本
 
 ## 项目结构
@@ -238,14 +241,14 @@ OrderService
 | 统一返回 | `Result<T>` 包装 `code / message / data` | 新接口继续沿用统一格式 |
 | 全局异常处理 | `BusinessException` + `GlobalExceptionHandler` | 新异常继续统一转换成 `Result<T>` |
 | 事务 | 创建订单、取消订单使用 `@Transactional` | 继续围绕库存一致性复盘 |
-| 数据库 SQL | 商品表、用户表、订单主表、订单明细表 | 补用户接口测试 |
+| 数据库 SQL | 商品表、用户表、订单主表、订单明细表 | 后续继续补缓存和消息相关能力 |
 | 数据库索引 | `idx_product_name`、`uk_order_no`、`uk_username`、`idx_user_id` 等 | 后续按查询场景继续补充 |
 | 缓存 | 暂未接入 | Redis 商品详情缓存 |
 | 分布式锁 | 暂未接入 | Redis 库存锁学习版 |
 | 拦截器 | 暂未接入 | 登录拦截器保护订单接口 |
 | AOP | 暂未接入 | 请求日志和接口耗时统计 |
 | 消息队列 | 暂未接入 | RocketMQ 订单消息学习版 |
-| 接口测试 | Apifox 手工测试，MockMvc 自动化测试 | 补用户、登录、拦截器测试 |
+| 接口测试 | Apifox 手工测试，MockMvc 自动化测试 | 后续补拦截器、缓存、消息测试 |
 | Git | 按阶段 commit 并 push 到 GitHub | 封版前整理文档并提交 |
 
 ## 当前说明
@@ -254,7 +257,7 @@ OrderService
 
 当前业务错误和请求体参数校验错误已通过 `GlobalExceptionHandler` 返回统一 JSON。后续会继续补充登录拦截器、AOP 日志、Redis 缓存和 RocketMQ 消息。
 
-用户模块已完成前置结构：`user_info` 表、User Entity、注册/登录 DTO、UserMapper、UserMapper XML、UserService。当前还没有暴露用户 Controller 接口，注册、登录和查询当前用户接口会在后续继续完成。
+用户模块已完成注册、登录和查询当前用户接口。当前登录使用学习版 token，token 暂时保存在内存 `ConcurrentHashMap` 中，后续会结合 Redis 继续优化。
 
 当前自动化测试已经覆盖：
 
@@ -262,6 +265,12 @@ OrderService
 - `/product/list` 成功返回数组结构。
 - `/product/999999` 商品不存在。
 - `/product/notExist` 路径参数类型错误。
+- `/user/register` 用户注册成功。
+- `/user/register` 重复用户名返回 `4012 用户名已存在`。
+- `/user/login` 登录成功返回 token。
+- `/user/login` 密码错误返回 `4011 用户名或密码错误`。
+- `/user/me` 带 token 查询当前用户成功，且不返回密码。
+- `/user/me` 不带 token 返回 `4010 未登录`。
 - `/order/create` 请求体参数校验错误。
 - `/order/create` 商品不存在。
 - `/order/create` 库存不足。
@@ -274,7 +283,6 @@ OrderService
 
 后续会围绕“项目完整性”和“能讲清楚链路”继续完善，不追求复杂业务堆叠。
 
-- 用户登录：继续补注册、登录和查询当前用户接口。
 - 登录拦截器：进入 Controller 前检查登录状态，订单接口需要登录。
 - AOP 请求日志：记录接口路径、请求方式和耗时，不侵入业务代码。
 - Redis 缓存和库存锁：商品详情加缓存，下单流程加入库存锁学习版。

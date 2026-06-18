@@ -24,6 +24,9 @@ http://localhost:8080
 | 4002 | 库存不足或商品已下架 | 创建订单时库存不足或商品不可下单 |
 | 4003 | 订单不存在 | 订单号不存在 |
 | 4004 | 订单已取消 | 重复取消订单 |
+| 4010 | 未登录 | 未携带 token 或 token 无效 |
+| 4011 | 用户名或密码错误 | 登录失败 |
+| 4012 | 用户名已存在 | 注册时用户名重复 |
 | 5000 | 系统异常 | 未单独处理的系统错误 |
 
 ## 健康检查
@@ -481,32 +484,51 @@ POST /order/cancel/OD20260610200621967
 
 说明：不会再次恢复库存。
 
-## 计划中接口
+## 用户接口
 
-下面接口是用户模块后续会继续补充的学习版接口，当前还不是可用接口。
+当前用户模块是学习版登录实现，用于理解注册、登录、token 和查询当前用户的基本链路。
 
-当前已经准备好 `user_info` 表、User Entity、注册/登录 DTO、UserMapper、UserMapper XML 和 UserService。还没有对外暴露 Controller 接口。
+当前 token 暂时保存在内存中，项目重启后会失效。后续会结合 Redis 继续优化。
 
 ### POST /user/register
 
 用途：注册一个本地测试用户。
 
-计划请求体：
+请求体：
 
 ```json
 {
   "username": "henry",
-  "password": "123456"
+  "password": "123456",
+  "nickname": "Henry"
 }
 ```
 
-计划返回：注册成功后的用户 ID。
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": 1
+}
+```
+
+重复用户名响应示例：
+
+```json
+{
+  "code": 4012,
+  "message": "用户名已存在",
+  "data": null
+}
+```
 
 ### POST /user/login
 
 用途：用户登录，返回一个学习版 token。
 
-计划请求体：
+请求体：
 
 ```json
 {
@@ -515,7 +537,7 @@ POST /order/cancel/OD20260610200621967
 }
 ```
 
-计划返回：
+响应示例：
 
 ```json
 {
@@ -525,7 +547,17 @@ POST /order/cancel/OD20260610200621967
 }
 ```
 
-后续订单接口会通过请求头传递 token：
+登录失败响应示例：
+
+```json
+{
+  "code": 4011,
+  "message": "用户名或密码错误",
+  "data": null
+}
+```
+
+后续请求可以通过请求头传递 token：
 
 ```text
 X-Token: 登录成功后生成的 token
@@ -535,7 +567,41 @@ X-Token: 登录成功后生成的 token
 
 用途：根据 token 查询当前登录用户信息。
 
-计划说明：这个接口用于理解“登录态”如何从请求头传到后端，不做复杂权限系统。
+请求头：
+
+```text
+X-Token: 登录成功后生成的 token
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "username": "henry",
+    "password": null,
+    "nickname": "Henry",
+    "status": 1,
+    "createTime": "2026-06-18T11:55:52",
+    "updateTime": "2026-06-18T11:55:52"
+  }
+}
+```
+
+未登录响应示例：
+
+```json
+{
+  "code": 4010,
+  "message": "未登录",
+  "data": null
+}
+```
+
+说明：返回当前用户信息前，后端会把 `password` 设置为 `null`，避免把密码返回给前端。
 
 ## 后续内部能力
 

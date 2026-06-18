@@ -52,6 +52,11 @@ public class UserService {
     }
 
     public User getCurrentUser(String token){
+
+        if(token == null|| token.isBlank()){
+            throw new BusinessException(4010,"未登录");
+        }
+
         Long userId = tokenStore.get(token);
         if (userId == null) {
             throw  new BusinessException(4010,"未登录");
