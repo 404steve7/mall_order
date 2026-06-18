@@ -115,6 +115,21 @@ request method: GET, uri: /product/list, cost time: 604ms
 
 用途：查询商品详情。
 
+内部能力：该接口已接入 Redis 商品详情缓存。第一次查询时如果 Redis 没有缓存，会查询 MySQL 并写入 Redis；后续查询命中缓存时会优先从 Redis 返回。修改商品后会删除对应缓存，避免读到旧数据。
+
+缓存 key 示例：
+
+```text
+product:detail:4
+```
+
+缓存日志示例：
+
+```text
+product cache miss, id=4
+product cache hit, id=4
+```
+
 路径参数：
 
 | 字段 | 类型 | 说明 |
@@ -629,6 +644,5 @@ X-Token: 登录成功后生成的 token
 
 Redis 和 RocketMQ 不一定表现为新的对外接口，它们更多是在业务内部生效。
 
-- Redis 商品详情缓存：查询商品详情时优先读取缓存，缓存没有再查 MySQL。
 - Redis 库存锁学习版：创建订单时围绕商品库存加锁，理解并发控制思路。
 - RocketMQ 订单消息：创建订单成功后发送消息，消费者接收消息并打印日志。

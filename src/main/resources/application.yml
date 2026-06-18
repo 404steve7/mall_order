@@ -3,6 +3,11 @@ spring:
     name: mall-order-demo
   profiles:
     include: local
+  data:
+    redis:
+      host:localhost
+      port:6379
+      timeout:3s
 
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml

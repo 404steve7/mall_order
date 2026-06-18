@@ -12,6 +12,8 @@
 - MyBatis
 - MySQL
 - Spring AOP
+- Spring Data Redis
+- Redis
 - Apifox
 - Git / GitHub
 
@@ -36,6 +38,7 @@
 - 使用 `GlobalExceptionHandler` 统一处理异常返回
 - 路径参数类型错误和请求体校验错误统一返回 `4000 参数错误`
 - 使用 AOP 记录请求方式、接口路径和接口耗时
+- 商品详情接口接入 Redis 缓存，修改商品后删除对应缓存
 - 已补充 18 个自动化测试，覆盖成功返回、业务失败、参数错误、用户登录、登录拦截器、成功下单、取消订单和重复取消
 - 商品和订单 SQL 初始化脚本
 
@@ -248,7 +251,7 @@ OrderService
 | 事务 | 创建订单、取消订单使用 `@Transactional` | 继续围绕库存一致性复盘 |
 | 数据库 SQL | 商品表、用户表、订单主表、订单明细表 | 后续继续补缓存和消息相关能力 |
 | 数据库索引 | `idx_product_name`、`uk_order_no`、`uk_username`、`idx_user_id` 等 | 后续按查询场景继续补充 |
-| 缓存 | 暂未接入 | Redis 商品详情缓存 |
+| 缓存 | 商品详情使用 Redis String 缓存，修改商品后删除缓存 | 后续复盘缓存命中、缓存失效和过期时间 |
 | 分布式锁 | 暂未接入 | Redis 库存锁学习版 |
 | 拦截器 | 登录拦截器保护 `/order/**` 接口 | 后续复盘拦截器和 AOP 的区别 |
 | AOP | `RequestLogAspect` 记录请求方式、路径和耗时 | 后续复盘切面、切点和通知 |
@@ -260,7 +263,7 @@ OrderService
 
 当前商品接口、订单接口和健康检查接口都已统一返回 `Result<T>` 格式。
 
-当前业务错误和请求体参数校验错误已通过 `GlobalExceptionHandler` 返回统一 JSON。订单接口已经通过登录拦截器要求携带 `X-Token`。项目已接入 AOP 请求日志，后续会继续补充 Redis 缓存和 RocketMQ 消息。
+当前业务错误和请求体参数校验错误已通过 `GlobalExceptionHandler` 返回统一 JSON。订单接口已经通过登录拦截器要求携带 `X-Token`。项目已接入 AOP 请求日志，商品详情接口已接入 Redis 缓存，后续会继续补充 Redis 库存锁和 RocketMQ 消息。
 
 用户模块已完成注册、登录和查询当前用户接口。当前登录使用学习版 token，token 暂时保存在内存 `ConcurrentHashMap` 中，后续会结合 Redis 继续优化。
 
@@ -289,6 +292,6 @@ OrderService
 
 后续会围绕“项目完整性”和“能讲清楚链路”继续完善，不追求复杂业务堆叠。
 
-- Redis 缓存和库存锁：商品详情加缓存，下单流程加入库存锁学习版。
+- Redis 库存锁：下单流程加入库存锁学习版。
 - RocketMQ 订单消息：下单成功后发送订单消息，消费者接收并打印日志。
 - 文档与复习封版：同步 README、接口文档、学习笔记，并准备项目讲解。
