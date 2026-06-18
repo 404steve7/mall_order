@@ -19,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -63,6 +64,8 @@ class MallOrderApplicationTests {
 
 	@Test
 	void createOrderReturnsBusinessErrorWhenProductNotExists() throws Exception {
+		String token = registerAndLogin();
+
 		String requestBody = """
 				{
 					"userId": 1001,
@@ -71,8 +74,9 @@ class MallOrderApplicationTests {
 					}
 				""";
 		mockMvc.perform(post("/order/create")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(requestBody))
+						.header("X-Token", token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.code").value(4001))
 				.andExpect(jsonPath("$.message").value("商品不存在"))
@@ -81,6 +85,9 @@ class MallOrderApplicationTests {
 
 	@Test
 	void createOrderReturnsBusinessErrorWhenStockNotEnough() throws Exception {
+
+		String token = registerAndLogin();
+
 		String requestBody = """
 				{
 					"userId": 1001,
@@ -90,8 +97,9 @@ class MallOrderApplicationTests {
 		""";
 
 		mockMvc.perform(post("/order/create")
-		.contentType(MediaType.APPLICATION_JSON)
-				.content(requestBody))
+						.header("X-Token", token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.code").value(4002))
 				.andExpect(jsonPath("$.message").value("库存不足或商品已下架"))
@@ -100,7 +108,11 @@ class MallOrderApplicationTests {
 
 	@Test
 	void getOrderReturnsBusinessErrorWhenOrderNotExist() throws Exception {
-		mockMvc.perform(get("/order/OD_NOT_EXIST"))
+
+		String token = registerAndLogin();
+
+		mockMvc.perform(get("/order/OD_NOT_EXIST")
+						.header("X-Token", token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.code").value(4003))
 				.andExpect(jsonPath("$.message").value("订单不存在"))
@@ -109,6 +121,9 @@ class MallOrderApplicationTests {
 
 	@Test
 	void createOrderReturnsParamErrorWhenQuantityInvalid() throws Exception {
+
+		String token = registerAndLogin();
+
 		String requestBody = """
 				{
 					"userId": 1001,
@@ -118,6 +133,7 @@ class MallOrderApplicationTests {
 		""";
 
 		mockMvc.perform(post("/order/create")
+						.header("X-Token", token)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(requestBody))
 				.andExpect(status().isOk())
@@ -129,6 +145,9 @@ class MallOrderApplicationTests {
 	@Test
 	@Transactional
 	void createOrderReturnsOrderNoWhenProductNotExists() throws Exception {
+
+		String token = registerAndLogin();
+
 		Product product = new Product();
 		product.setProductName("测试下单商品");
 		product.setPrice(new BigDecimal("10.00"));
@@ -145,8 +164,9 @@ class MallOrderApplicationTests {
 		""".formatted(product.getId());
 
 		mockMvc.perform(post("/order/create")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(requestBody))
+						.header("X-Token", token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.code").value(0))
 				.andExpect(jsonPath("$.message").value("success"))
@@ -156,6 +176,9 @@ class MallOrderApplicationTests {
 	@Test
 	@Transactional
 	void cancelOrderReturnsSuccessWhenProductExists() throws Exception {
+
+		String token = registerAndLogin();
+
 		Product product = new Product();
 		product.setProductName("测试取消订单商品");
 		product.setPrice(new BigDecimal("10.00"));
@@ -172,8 +195,9 @@ class MallOrderApplicationTests {
 		""".formatted(product.getId());
 
 		MvcResult createResult = mockMvc.perform(post("/order/create")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(requestBody))
+						.header("X-Token", token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.code").value(0))
 				.andReturn();
@@ -181,12 +205,14 @@ class MallOrderApplicationTests {
 		String responseBody = createResult.getResponse().getContentAsString();
 		String orderNo = JsonPath.read(responseBody, "$.data");
 
-		mockMvc.perform(post("/order/cancel/{orderNo}" , orderNo))
+		mockMvc.perform(post("/order/cancel/{orderNo}" , orderNo)
+						.header("X-Token", token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.code").value(0))
 				.andExpect(jsonPath("$.data").value(true));
 
-		mockMvc.perform(get("/order/{orderNo}" , orderNo))
+		mockMvc.perform(get("/order/{orderNo}" , orderNo)
+						.header("X-Token", token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.code").value(0))
 				.andExpect(jsonPath("$.data.orderNo").value(orderNo))
@@ -196,6 +222,9 @@ class MallOrderApplicationTests {
 	@Test
 	@Transactional
 	void cancelOrderReturnsBusinessErrorWhenOrderAlreadyCancelled() throws Exception {
+
+		String token = registerAndLogin();
+
 		Product product = new Product();
 		product.setProductName("测试重复取消订单商品");
 		product.setPrice(new BigDecimal("10.00"));
@@ -212,8 +241,9 @@ class MallOrderApplicationTests {
 		""".formatted(product.getId());
 
 		MvcResult createResult =mockMvc.perform(post("/order/create")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(requestBody))
+						.header("X-Token", token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.code").value(0))
 				.andReturn();
@@ -221,12 +251,14 @@ class MallOrderApplicationTests {
 		String responseBody = createResult.getResponse().getContentAsString();
 		String orderNo = JsonPath.read(responseBody, "$.data");
 
-		mockMvc.perform(post("/order/cancel/{orderNo}" , orderNo))
+		mockMvc.perform(post("/order/cancel/{orderNo}" , orderNo)
+						.header("X-Token", token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.code").value(0))
 				.andExpect(jsonPath("$.data").value(true));
 
-		mockMvc.perform(post("/order/cancel/{orderNo}" , orderNo))
+		mockMvc.perform(post("/order/cancel/{orderNo}" , orderNo)
+						.header("X-Token", token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.code").value(4004))
 				.andExpect(jsonPath("$.message").value("订单已取消"))
@@ -237,7 +269,7 @@ class MallOrderApplicationTests {
 	@Transactional
 	void registerUserReturnsUserIdWhenUsernameNotExists() throws Exception {
 
-		String username = "test_user_" + System.currentTimeMillis();
+		String username = "test_user_" + UUID.randomUUID();
 		String requestBody = """
 				{
 					"username": "%s",
@@ -258,7 +290,7 @@ class MallOrderApplicationTests {
 	@Test
 	@Transactional
 	void registerUserReturnsBusinessErrorWhenUsernameAlreadyExists() throws Exception {
-		String username = "test_user_" + System.currentTimeMillis();
+		String username = "test_user_" + UUID.randomUUID();
 
 		String requestBody = """
 				{
@@ -286,7 +318,7 @@ class MallOrderApplicationTests {
 	@Test
 	@Transactional
 	void loginReturnsTokenWhenUsernameAndPasswordCorrect() throws Exception {
-		String username = "test_user_" + System.currentTimeMillis();
+		String username = "test_user_" + UUID.randomUUID();
 		String registerBody = """
 				{
 					"username": "%s",
@@ -321,7 +353,7 @@ class MallOrderApplicationTests {
 	@Test
 	@Transactional
 	void loginReturnsBusinessErrorWhenPasswordWrong() throws Exception {
-		String username = "test_user_" + System.currentTimeMillis();
+		String username = "test_user_" + UUID.randomUUID();
 
 		String registerBody = """
 				{
@@ -356,7 +388,7 @@ class MallOrderApplicationTests {
 	@Test
 	@Transactional
 	void getCurrentUserReturnsUserInfoWhenTokenValid() throws Exception {
-		String username = "test_user_" + System.currentTimeMillis();
+		String username = "test_user_" + UUID.randomUUID();
 		String registerBody = """
 				{
 				"username": "%s",
@@ -404,4 +436,57 @@ class MallOrderApplicationTests {
 				.andExpect(jsonPath("$.message").value("未登录"))
 				.andExpect(jsonPath("$.data").isEmpty());
 	}
+	@Test
+	void createOrderReturnsErrorWhenTokenMissing() throws Exception {
+		String requestBody = """
+				{
+					"username": "%s",
+					"password": "123456"
+					"quantity": 1
+					}
+		""";
+
+		mockMvc.perform(post("/order/create")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(4010))
+				.andExpect(jsonPath("$.message").value("未登录"))
+				.andExpect(jsonPath("$.data").isEmpty());
+	}
+
+	private String registerAndLogin() throws Exception {
+		String username = "test_user_" + UUID.randomUUID();
+		String registerBody = """
+				{
+				"username": "%s",
+				"password": "123456",
+				"nickname": "测试用户"
+				}
+		""".formatted(username);
+
+		mockMvc.perform(post("/user/register")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(registerBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(0));
+
+		String loginBody = """
+				{
+				"username": "%s",
+				"password": "123456"
+				}
+		""".formatted(username);
+
+		MvcResult loginResult = mockMvc.perform(post("/user/login")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(loginBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(0))
+				.andReturn();
+
+		String responseBody = loginResult.getResponse().getContentAsString();
+		return JsonPath.read(responseBody, "$.data");
+	}
+
 }

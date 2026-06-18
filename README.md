@@ -34,7 +34,7 @@
 - 使用 `BusinessException` 表示业务失败
 - 使用 `GlobalExceptionHandler` 统一处理异常返回
 - 路径参数类型错误和请求体校验错误统一返回 `4000 参数错误`
-- 已补充 17 个自动化测试，覆盖成功返回、业务失败、参数错误、用户登录、成功下单、取消订单和重复取消
+- 已补充 18 个自动化测试，覆盖成功返回、业务失败、参数错误、用户登录、登录拦截器、成功下单、取消订单和重复取消
 - 商品和订单 SQL 初始化脚本
 
 ## 项目结构
@@ -245,17 +245,17 @@ OrderService
 | 数据库索引 | `idx_product_name`、`uk_order_no`、`uk_username`、`idx_user_id` 等 | 后续按查询场景继续补充 |
 | 缓存 | 暂未接入 | Redis 商品详情缓存 |
 | 分布式锁 | 暂未接入 | Redis 库存锁学习版 |
-| 拦截器 | 暂未接入 | 登录拦截器保护订单接口 |
+| 拦截器 | 登录拦截器保护 `/order/**` 接口 | 后续复盘拦截器和 AOP 的区别 |
 | AOP | 暂未接入 | 请求日志和接口耗时统计 |
 | 消息队列 | 暂未接入 | RocketMQ 订单消息学习版 |
-| 接口测试 | Apifox 手工测试，MockMvc 自动化测试 | 后续补拦截器、缓存、消息测试 |
+| 接口测试 | Apifox 手工测试，MockMvc 自动化测试 | 后续补缓存、消息测试 |
 | Git | 按阶段 commit 并 push 到 GitHub | 封版前整理文档并提交 |
 
 ## 当前说明
 
 当前商品接口、订单接口和健康检查接口都已统一返回 `Result<T>` 格式。
 
-当前业务错误和请求体参数校验错误已通过 `GlobalExceptionHandler` 返回统一 JSON。后续会继续补充登录拦截器、AOP 日志、Redis 缓存和 RocketMQ 消息。
+当前业务错误和请求体参数校验错误已通过 `GlobalExceptionHandler` 返回统一 JSON。订单接口已经通过登录拦截器要求携带 `X-Token`。后续会继续补充 AOP 日志、Redis 缓存和 RocketMQ 消息。
 
 用户模块已完成注册、登录和查询当前用户接口。当前登录使用学习版 token，token 暂时保存在内存 `ConcurrentHashMap` 中，后续会结合 Redis 继续优化。
 
@@ -271,6 +271,7 @@ OrderService
 - `/user/login` 密码错误返回 `4011 用户名或密码错误`。
 - `/user/me` 带 token 查询当前用户成功，且不返回密码。
 - `/user/me` 不带 token 返回 `4010 未登录`。
+- `/order/create` 不带 token 返回 `4010 未登录`。
 - `/order/create` 请求体参数校验错误。
 - `/order/create` 商品不存在。
 - `/order/create` 库存不足。
@@ -283,7 +284,6 @@ OrderService
 
 后续会围绕“项目完整性”和“能讲清楚链路”继续完善，不追求复杂业务堆叠。
 
-- 登录拦截器：进入 Controller 前检查登录状态，订单接口需要登录。
 - AOP 请求日志：记录接口路径、请求方式和耗时，不侵入业务代码。
 - Redis 缓存和库存锁：商品详情加缓存，下单流程加入库存锁学习版。
 - RocketMQ 订单消息：下单成功后发送订单消息，消费者接收并打印日志。

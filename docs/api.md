@@ -225,6 +225,22 @@ GET /product/notExist
 
 ## 订单接口
 
+订单接口当前已接入登录拦截器，请求 `/order/**` 时需要在 Header 中携带登录返回的 token：
+
+```text
+X-Token: 登录成功后生成的 token
+```
+
+未携带 token 或 token 无效时，会返回：
+
+```json
+{
+  "code": 4010,
+  "message": "未登录",
+  "data": null
+}
+```
+
 ### POST /order/create
 
 用途：创建订单。当前版本一次订单只购买一个商品。

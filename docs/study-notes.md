@@ -940,9 +940,10 @@ src/test/java/com/henry/mallorder/MallOrderApplicationTests.java
 /user/login 密码错误返回用户名或密码错误
 /user/me 带 token 查询当前用户成功
 /user/me 不带 token 返回未登录
+/order/create 不带 token 返回未登录
 ```
 
-现在一共有 17 个自动化测试。测试覆盖了统一返回、业务失败、参数错误、用户注册登录、成功下单、取消订单和重复取消订单。
+现在一共有 18 个自动化测试。测试覆盖了统一返回、业务失败、参数错误、用户注册登录、登录拦截器、成功下单、取消订单和重复取消订单。
 
 为什么成功下单测试要加 `@Transactional`：
 
@@ -1125,7 +1126,7 @@ user.setPassword(null);
 
 拦截器可以理解成“请求进入 Controller 之前的一道门”。
 
-后续订单接口会要求登录：
+当前订单接口已经要求登录：
 
 ```text
 请求进入后端
@@ -1138,6 +1139,30 @@ token 无效，直接返回未登录
 ```
 
 商品查询可以先放行，因为很多系统里商品浏览不一定需要登录；创建订单、取消订单这种会改变业务数据的接口更适合要求登录。
+
+当前拦截范围是：
+
+```text
+/order/**
+```
+
+也就是说，下面这些接口都需要 `X-Token`：
+
+```text
+POST /order/create
+GET  /order/{orderNo}
+POST /order/cancel/{orderNo}
+```
+
+测试里如果要访问订单接口，也必须先注册登录拿 token：
+
+```text
+registerAndLogin()
+↓
+请求 /order/** 时加 .header("X-Token", token)
+```
+
+如果测试不带 token，就会先被拦截器挡住，返回 `4010 未登录`，不会进入 Controller，也不会走参数校验或业务逻辑。
 
 ### AOP 请求日志
 
@@ -1215,9 +1240,9 @@ Message：消息内容
 
 ### 6 月 18 日：登录拦截器和 AOP
 
-- 新增登录拦截器。
-- 订单接口要求携带 token。
-- 未登录返回统一错误。
+- 已新增登录拦截器。
+- 订单接口已要求携带 token。
+- 未登录已返回统一错误。
 - 新增 AOP 请求日志。
 
 ### 6 月 19 日：Redis
