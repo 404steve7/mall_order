@@ -14,6 +14,12 @@ http://localhost:8080
 
 当前业务异常和请求体参数校验异常已通过 `GlobalExceptionHandler` 统一处理。
 
+当前项目已接入 AOP 请求日志。它不会新增对外接口，而是在请求进入 Controller 方法前后记录请求方式、请求路径和接口耗时。示例日志：
+
+```text
+request method: GET, uri: /product/list, cost time: 604ms
+```
+
 当前通用错误码：
 
 | code | message | 说明 |

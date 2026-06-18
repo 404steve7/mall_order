@@ -11,6 +11,7 @@
 - Maven
 - MyBatis
 - MySQL
+- Spring AOP
 - Apifox
 - Git / GitHub
 
@@ -34,6 +35,7 @@
 - 使用 `BusinessException` 表示业务失败
 - 使用 `GlobalExceptionHandler` 统一处理异常返回
 - 路径参数类型错误和请求体校验错误统一返回 `4000 参数错误`
+- 使用 AOP 记录请求方式、接口路径和接口耗时
 - 已补充 18 个自动化测试，覆盖成功返回、业务失败、参数错误、用户登录、登录拦截器、成功下单、取消订单和重复取消
 - 商品和订单 SQL 初始化脚本
 
@@ -51,8 +53,11 @@ mall_order_demo
 │   ├── main
 │   │   ├── java/com/henry/mallorder
 │   │   │   ├── common
+│   │   │   ├── config
+│   │   │   ├── log
 │   │   │   ├── order
-│   │   │   └── product
+│   │   │   ├── product
+│   │   │   └── user
 │   │   └── resources
 │   │       ├── application.yml
 │   │       └── mapper
@@ -246,7 +251,7 @@ OrderService
 | 缓存 | 暂未接入 | Redis 商品详情缓存 |
 | 分布式锁 | 暂未接入 | Redis 库存锁学习版 |
 | 拦截器 | 登录拦截器保护 `/order/**` 接口 | 后续复盘拦截器和 AOP 的区别 |
-| AOP | 暂未接入 | 请求日志和接口耗时统计 |
+| AOP | `RequestLogAspect` 记录请求方式、路径和耗时 | 后续复盘切面、切点和通知 |
 | 消息队列 | 暂未接入 | RocketMQ 订单消息学习版 |
 | 接口测试 | Apifox 手工测试，MockMvc 自动化测试 | 后续补缓存、消息测试 |
 | Git | 按阶段 commit 并 push 到 GitHub | 封版前整理文档并提交 |
@@ -255,7 +260,7 @@ OrderService
 
 当前商品接口、订单接口和健康检查接口都已统一返回 `Result<T>` 格式。
 
-当前业务错误和请求体参数校验错误已通过 `GlobalExceptionHandler` 返回统一 JSON。订单接口已经通过登录拦截器要求携带 `X-Token`。后续会继续补充 AOP 日志、Redis 缓存和 RocketMQ 消息。
+当前业务错误和请求体参数校验错误已通过 `GlobalExceptionHandler` 返回统一 JSON。订单接口已经通过登录拦截器要求携带 `X-Token`。项目已接入 AOP 请求日志，后续会继续补充 Redis 缓存和 RocketMQ 消息。
 
 用户模块已完成注册、登录和查询当前用户接口。当前登录使用学习版 token，token 暂时保存在内存 `ConcurrentHashMap` 中，后续会结合 Redis 继续优化。
 
@@ -284,7 +289,6 @@ OrderService
 
 后续会围绕“项目完整性”和“能讲清楚链路”继续完善，不追求复杂业务堆叠。
 
-- AOP 请求日志：记录接口路径、请求方式和耗时，不侵入业务代码。
 - Redis 缓存和库存锁：商品详情加缓存，下单流程加入库存锁学习版。
 - RocketMQ 订单消息：下单成功后发送订单消息，消费者接收并打印日志。
 - 文档与复习封版：同步 README、接口文档、学习笔记，并准备项目讲解。
