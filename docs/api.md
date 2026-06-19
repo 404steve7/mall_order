@@ -20,6 +20,12 @@ http://localhost:8080
 request method: GET, uri: /product/list, cost time: 604ms
 ```
 
+当前项目已接入 RocketMQ 订单消息学习版。它不会新增对外接口，而是在创建订单成功后向 `order-topic` 发送订单号，消费者收到后打印日志。示例日志：
+
+```text
+receive order created message, orderNo=OD20260619154521184
+```
+
 当前通用错误码：
 
 | code | message | 说明 |
@@ -305,11 +311,23 @@ X-Token: 登录成功后生成的 token
 删除商品详情缓存
 插入订单主表 order_info
 插入订单明细表 order_item
+发送 RocketMQ 订单消息
 释放 Redis 商品库存锁
 返回订单号
 ```
 
 说明：Redis 锁是学习版分布式锁，用于理解 `SET NX EX` 的并发控制思路；真正兜底库存不能扣成负数的仍然是数据库中的扣库存 SQL。
+
+订单消息说明：
+
+```text
+Topic：order-topic
+Producer：OrderMessageProducer
+Consumer：OrderMessageConsumer
+Message：订单号 orderNo
+```
+
+创建订单成功后，后端会把订单号发送到 RocketMQ。消费者收到消息后暂时只打印日志，用于学习 Producer / Consumer 的基本链路。
 
 ### GET /order/{orderNo}
 
@@ -647,8 +665,10 @@ X-Token: 登录成功后生成的 token
 
 说明：返回当前用户信息前，后端会把 `password` 设置为 `null`，避免把密码返回给前端。
 
-## 后续内部能力
+## 内部能力说明
 
 Redis 和 RocketMQ 不一定表现为新的对外接口，它们更多是在业务内部生效。
 
+- Redis 商品缓存：查询商品详情时优先读缓存，修改商品、下单、取消订单后删除缓存。
+- Redis 库存锁：创建订单时使用 `SET NX EX` 思路保护同一商品下单流程。
 - RocketMQ 订单消息：创建订单成功后发送消息，消费者接收消息并打印日志。

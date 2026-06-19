@@ -14,6 +14,7 @@
 - Spring AOP
 - Spring Data Redis
 - Redis
+- RocketMQ
 - Apifox
 - Git / GitHub
 
@@ -40,6 +41,8 @@
 - 使用 AOP 记录请求方式、接口路径和接口耗时
 - 商品详情接口接入 Redis 缓存，修改商品后删除对应缓存
 - 创建订单时使用 Redis 库存锁学习版，并在下单、取消订单后删除商品缓存
+- 创建订单成功后发送 RocketMQ 订单消息
+- RocketMQ 消费者接收订单消息并打印订单号
 - 已补充 18 个自动化测试，覆盖成功返回、业务失败、参数错误、用户登录、登录拦截器、成功下单、取消订单和重复取消
 - 商品和订单 SQL 初始化脚本
 
@@ -60,6 +63,7 @@ mall_order_demo
 │   │   │   ├── config
 │   │   │   ├── log
 │   │   │   ├── order
+│   │   │   │   └── mq
 │   │   │   ├── product
 │   │   │   └── user
 │   │   └── resources
@@ -195,10 +199,12 @@ OrderService
 ↓
 创建 order_item
 ↓
+发送 RocketMQ 订单消息
+↓
 返回订单号
 ```
 
-下单接口使用 `@Transactional`，保证扣库存、创建订单主表、创建订单明细要么都成功，要么都失败。
+下单接口使用 `@Transactional`，保证扣库存、创建订单主表、创建订单明细要么都成功，要么都失败。订单创建成功后，会向 RocketMQ 的 `order-topic` 发送订单号，消费者收到后打印日志。
 
 ### 查询订单详情
 
@@ -256,7 +262,7 @@ OrderService
 | 分布式锁 | 创建订单时使用 Redis `SET NX EX` 思路做商品库存锁学习版 | 后续复盘锁过期、锁释放和数据库兜底 |
 | 拦截器 | 登录拦截器保护 `/order/**` 接口 | 后续复盘拦截器和 AOP 的区别 |
 | AOP | `RequestLogAspect` 记录请求方式、路径和耗时 | 后续复盘切面、切点和通知 |
-| 消息队列 | 暂未接入 | RocketMQ 订单消息学习版 |
+| 消息队列 | 创建订单成功后发送 RocketMQ 消息，消费者接收并打印订单号 | 后续复盘 Topic、Producer、Consumer |
 | 接口测试 | Apifox 手工测试，MockMvc 自动化测试 | 后续补缓存、消息测试 |
 | Git | 按阶段 commit 并 push 到 GitHub | 封版前整理文档并提交 |
 
@@ -264,7 +270,7 @@ OrderService
 
 当前商品接口、订单接口和健康检查接口都已统一返回 `Result<T>` 格式。
 
-当前业务错误和请求体参数校验错误已通过 `GlobalExceptionHandler` 返回统一 JSON。订单接口已经通过登录拦截器要求携带 `X-Token`。项目已接入 AOP 请求日志，商品详情接口已接入 Redis 缓存，创建订单流程已加入 Redis 库存锁学习版，后续会继续补充 RocketMQ 消息。
+当前业务错误和请求体参数校验错误已通过 `GlobalExceptionHandler` 返回统一 JSON。订单接口已经通过登录拦截器要求携带 `X-Token`。项目已接入 AOP 请求日志，商品详情接口已接入 Redis 缓存，创建订单流程已加入 Redis 库存锁学习版，并已接入 RocketMQ 订单消息学习版。
 
 用户模块已完成注册、登录和查询当前用户接口。当前登录使用学习版 token，token 暂时保存在内存 `ConcurrentHashMap` 中，后续会结合 Redis 继续优化。
 
@@ -293,5 +299,5 @@ OrderService
 
 后续会围绕“项目完整性”和“能讲清楚链路”继续完善，不追求复杂业务堆叠。
 
-- RocketMQ 订单消息：下单成功后发送订单消息，消费者接收并打印日志。
+- 功能封版：回归测试商品、订单、用户、Redis、RocketMQ 核心链路。
 - 文档与复习封版：同步 README、接口文档、学习笔记，并准备项目讲解。

@@ -8,6 +8,7 @@ import com.henry.mallorder.order.vo.OrderDetailVO;
 import com.henry.mallorder.product.entity.Product;
 import com.henry.mallorder.product.mapper.ProductMapper;
 import com.henry.mallorder.common.exception.BusinessException;
+import com.henry.mallorder.order.mq.OrderMessageProducer;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -31,13 +32,16 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final ProductMapper productMapper;
     private final StringRedisTemplate stringRedisTemplate;
+    private final OrderMessageProducer orderMessageProducer;
 
     public OrderService(OrderMapper orderMapper,
                         ProductMapper productMapper,
-                        StringRedisTemplate stringRedisTemplate) {
+                        StringRedisTemplate stringRedisTemplate,
+                        OrderMessageProducer orderMessageProducer) {
         this.orderMapper = orderMapper;
         this.productMapper = productMapper;
         this.stringRedisTemplate = stringRedisTemplate;
+        this.orderMessageProducer = orderMessageProducer;
     }
 
     @Transactional
@@ -82,6 +86,8 @@ public class OrderService {
             orderItem.setQuantity(request.getQuantity());
             orderItem.setTotalAmount(totalAmount);
             orderMapper.insertOrderItem(orderItem);
+
+            orderMessageProducer.sendOrderCreatedMessage(orderNo);
 
             return orderNo;
         } finally {
@@ -151,9 +157,9 @@ public class OrderService {
     }
 
     private void releaseLock(String lockKey, String lockValue) {
-        String cuurentValue = stringRedisTemplate.opsForValue().get(lockKey);
+        String currentValue = stringRedisTemplate.opsForValue().get(lockKey);
 
-        if (lockValue.equals(cuurentValue)){
+        if (lockValue.equals(currentValue)){
             stringRedisTemplate.delete(lockKey);
         }
     }
