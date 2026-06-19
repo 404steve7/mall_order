@@ -1,8 +1,8 @@
 # Mall Order Demo
 
-这是一个用于学习 Java 后端基础链路的电商订单库存管理系统。
+一个基于 Spring Boot 的电商订单库存管理后端项目，围绕商品、用户、订单、库存一致性、缓存和消息队列搭建了一条完整的后端业务链路。
 
-项目目标不是做复杂系统，而是跑通一个小而完整的后端项目：能启动、能连 MySQL、能写接口、能操作数据库、能用 Apifox 测试，并且能讲清楚代码从请求到数据库的执行过程。
+项目重点不是堆复杂业务，而是把后端开发中的常见能力串起来：HTTP 接口、参数校验、分层架构、数据库操作、事务、登录拦截、AOP 日志、Redis 缓存与锁、RocketMQ 消息、自动化测试。
 
 ## 技术栈
 
@@ -11,112 +11,130 @@
 - Maven
 - MyBatis
 - MySQL
-- Spring AOP
-- Spring Data Redis
-- Redis
+- Redis / Spring Data Redis
 - RocketMQ
-- Apifox
+- Spring Validation
+- Spring AOP
+- Spring MVC Interceptor
+- JUnit 5 / MockMvc
+- Docker
 - Git / GitHub
 
-## 已完成功能
+## 核心功能
 
-- 健康检查接口：`GET /hello`
-- 商品新增：`POST /product/add`
-- 商品列表：`GET /product/list`
-- 商品详情：`GET /product/{id}`
-- 商品修改：`PUT /product/{id}`
-- 用户注册：`POST /user/register`
-- 用户登录：`POST /user/login`
-- 查询当前用户：`GET /user/me`
-- 创建订单：`POST /order/create`
-- 查询订单详情：`GET /order/{orderNo}`
-- 取消订单：`POST /order/cancel/{orderNo}`
-- 下单时扣减商品库存
-- 取消订单时恢复商品库存
-- 下单和取消订单接口使用 `@Transactional` 保证事务一致性
-- 所有业务接口统一返回 `Result<T>`
-- 使用 `BusinessException` 表示业务失败
-- 使用 `GlobalExceptionHandler` 统一处理异常返回
-- 路径参数类型错误和请求体校验错误统一返回 `4000 参数错误`
-- 使用 AOP 记录请求方式、接口路径和接口耗时
-- 商品详情接口接入 Redis 缓存，修改商品后删除对应缓存
-- 创建订单时使用 Redis 库存锁学习版，并在下单、取消订单后删除商品缓存
-- 创建订单成功后发送 RocketMQ 订单消息
-- RocketMQ 消费者接收订单消息并打印订单号
-- 已补充 18 个自动化测试，覆盖成功返回、业务失败、参数错误、用户登录、登录拦截器、成功下单、取消订单和重复取消
-- 商品和订单 SQL 初始化脚本
+- 商品管理：新增商品、查询列表、查询详情、修改商品。
+- 用户模块：注册、登录、根据 token 查询当前用户。
+- 订单模块：创建订单、查询订单详情、取消订单。
+- 库存控制：下单扣减库存，取消订单恢复库存，避免重复取消导致库存多加。
+- 统一返回：所有业务接口返回 `code / message / data` 结构。
+- 全局异常：业务异常、参数校验异常、路径参数错误统一转换为 JSON。
+- 登录拦截：订单接口通过 `X-Token` 做登录校验。
+- 请求日志：使用 AOP 记录请求方式、路径和耗时。
+- Redis 缓存：商品详情使用 Redis String 缓存，商品变更后删除缓存。
+- Redis 锁：创建订单时使用 `SET NX EX` 思路实现学习版库存锁。
+- RocketMQ：创建订单成功后发送订单消息，消费者接收并打印订单号。
+- 自动化测试：覆盖接口成功场景、业务失败、参数校验、登录拦截、下单和取消订单。
+
+## 业务链路
+
+项目采用典型的后端分层结构：
+
+```text
+Controller -> Service -> Mapper -> MyBatis XML -> MySQL
+```
+
+创建订单的主链路：
+
+```text
+POST /order/create
+-> 登录拦截器校验 X-Token
+-> OrderController 接收请求
+-> OrderService 获取 Redis 商品锁
+-> 查询商品并校验库存
+-> 扣减商品库存
+-> 写入 order_info 和 order_item
+-> 删除商品详情缓存
+-> 发送 RocketMQ 订单消息
+-> Consumer 接收消息并打印日志
+```
+
+取消订单的主链路：
+
+```text
+POST /order/cancel/{orderNo}
+-> 查询订单和订单明细
+-> 校验订单是否已取消
+-> 修改订单状态
+-> 恢复商品库存
+-> 删除商品详情缓存
+```
 
 ## 项目结构
 
 ```text
-mall_order_demo
-├── docs
-│   ├── api.md
-│   ├── screenshots
-│   └── study-notes.md
-├── sql
-│   └── init.sql
-├── src
-│   ├── main
-│   │   ├── java/com/henry/mallorder
-│   │   │   ├── common
-│   │   │   ├── config
-│   │   │   ├── log
-│   │   │   ├── order
-│   │   │   │   └── mq
-│   │   │   ├── product
-│   │   │   └── user
-│   │   └── resources
-│   │       ├── application.yml
-│   │       └── mapper
-│   └── test
-├── pom.xml
-└── README.md
+src/main/java/com/henry/mallorder
+├── common      # 统一返回和异常处理
+├── config      # 登录拦截器配置
+├── log         # AOP 请求日志
+├── product     # 商品模块
+├── order       # 订单模块和 RocketMQ 消息
+└── user        # 用户模块
+
+src/main/resources
+├── application.yml
+└── mapper      # MyBatis XML
 ```
 
-## 分层说明
+## 数据库设计
 
-- `controller`：接收 HTTP 请求，定义接口路径。
-- `service`：处理业务逻辑，例如下单、扣库存、创建订单。
-- `mapper`：定义数据库操作方法。
-- `entity`：对应数据库表，例如 `Product`、`OrderInfo`、`OrderItem`。
-- `dto`：接收请求参数，例如 `ProductCreateRequest`、`CreateOrderRequest`。
-- `vo`：组织返回给前端的数据，例如 `OrderDetailVO`。
-- `common`：通用代码，例如统一返回对象 `Result<T>`。
-- `common/exception`：统一异常处理，例如 `BusinessException`、`GlobalExceptionHandler`。
-- `resources/mapper`：MyBatis XML SQL 文件。
-- `sql/init.sql`：数据库初始化 SQL。
-- `docs/api.md`：接口文档。
-- `docs/study-notes.md`：学习笔记。
-
-## 数据库表
-
-当前数据库名：
-
-```text
-mall_order_demo
-```
-
-已创建表：
+当前使用 4 张核心表：
 
 - `product`：商品表。
 - `user_info`：用户表。
 - `order_info`：订单主表。
 - `order_item`：订单明细表。
 
-建表 SQL 见：
+项目中使用了基础 SQL、唯一索引和普通索引，例如：
+
+- `uk_order_no`：保证订单号唯一。
+- `uk_username`：保证用户名唯一。
+- `idx_product_name`：支持商品名称查询场景。
+- `idx_user_id`：支持用户订单查询场景。
+
+金额字段使用 MySQL `DECIMAL`，Java 中使用 `BigDecimal`，避免浮点数精度问题。
+
+## 本地运行
+
+### 1. 准备环境
+
+- JDK 17
+- MySQL 8.x
+- Docker Desktop
+- Redis
+- RocketMQ NameServer / Broker
+
+检查 Java：
+
+```powershell
+java -version
+javac -version
+```
+
+### 2. 初始化数据库
+
+创建数据库并执行初始化 SQL：
+
+```sql
+CREATE DATABASE mall_order_demo DEFAULT CHARACTER SET utf8mb4;
+```
+
+然后执行：
 
 ```text
 sql/init.sql
 ```
 
-## 本地配置
-
-公共配置放在：
-
-```text
-src/main/resources/application.yml
-```
+### 3. 本地配置
 
 本地数据库账号密码放在：
 
@@ -124,180 +142,111 @@ src/main/resources/application.yml
 src/main/resources/application-local.yml
 ```
 
-`application-local.yml` 已被 `.gitignore` 忽略，不会提交到 GitHub。示例：
+该文件已被 Git 忽略，不会提交到仓库。
+
+示例：
 
 ```yaml
 spring:
   datasource:
     url: jdbc:mysql://localhost:3306/mall_order_demo?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: root
-    password: 你的MySQL密码
+    password: your_password
     driver-class-name: com.mysql.cj.jdbc.Driver
 ```
 
-## 启动步骤
+### 4. 启动依赖服务
 
-1. 确认 JDK 是 17：
+Redis 默认连接：
 
-```powershell
-java -version
-javac -version
+```text
+localhost:6379
 ```
 
-2. 创建数据库和表：
+RocketMQ 默认连接：
 
-```sql
-SOURCE sql/init.sql;
+```text
+NameServer: localhost:9876
 ```
 
-也可以手动复制 `sql/init.sql` 到 MySQL 中执行。
+项目里的 RocketMQ Producer group：
 
-3. 启动项目：
+```text
+mall-order-producer-group
+```
+
+订单消息 Topic：
+
+```text
+order-topic
+```
+
+### 5. 启动项目
 
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
 
-4. 运行测试：
+### 6. 运行测试
 
 ```powershell
 .\mvnw.cmd test
 ```
 
-## 核心业务流程
+当前测试覆盖：
 
-### 商品新增
+- 统一返回结构。
+- 商品查询和商品不存在。
+- 用户注册、登录、查询当前用户。
+- 未登录访问订单接口。
+- 创建订单成功、商品不存在、库存不足、参数错误。
+- 查询订单不存在。
+- 取消订单成功和重复取消。
 
-```text
-Apifox
-↓
-ProductController
-↓
-ProductService
-↓
-ProductMapper
-↓
-ProductMapper.xml
-↓
-MySQL product 表
-```
+## 接口概览
 
-### 创建订单
+| 模块 | 方法 | 路径 | 说明 |
+| --- | --- | --- | --- |
+| 健康检查 | GET | `/hello` | 验证服务启动 |
+| 商品 | POST | `/product/add` | 新增商品 |
+| 商品 | GET | `/product/list` | 商品列表 |
+| 商品 | GET | `/product/{id}` | 商品详情，接入 Redis 缓存 |
+| 商品 | PUT | `/product/{id}` | 修改商品并删除缓存 |
+| 用户 | POST | `/user/register` | 注册用户 |
+| 用户 | POST | `/user/login` | 登录并返回 token |
+| 用户 | GET | `/user/me` | 根据 token 查询当前用户 |
+| 订单 | POST | `/order/create` | 创建订单，扣库存并发送 MQ 消息 |
+| 订单 | GET | `/order/{orderNo}` | 查询订单详情 |
+| 订单 | POST | `/order/cancel/{orderNo}` | 取消订单并恢复库存 |
 
-```text
-Apifox
-↓
-OrderController
-↓
-OrderService
-↓
-查询商品
-↓
-扣减库存
-↓
-创建 order_info
-↓
-创建 order_item
-↓
-发送 RocketMQ 订单消息
-↓
-返回订单号
-```
-
-下单接口使用 `@Transactional`，保证扣库存、创建订单主表、创建订单明细要么都成功，要么都失败。订单创建成功后，会向 RocketMQ 的 `order-topic` 发送订单号，消费者收到后打印日志。
-
-### 查询订单详情
+订单接口需要在 Header 中携带：
 
 ```text
-Apifox
-↓
-OrderController
-↓
-OrderService
-↓
-查询 order_info
-↓
-查询 order_item
-↓
-组装 OrderDetailVO
-↓
-返回订单主信息 + 明细列表
+X-Token: 登录后返回的 token
 ```
 
-### 取消订单
+## 项目亮点
 
-```text
-Apifox
-↓
-OrderController
-↓
-OrderService
-↓
-查询订单
-↓
-查询订单明细
-↓
-把 order_info.status 改为 2
-↓
-把订单明细中的商品库存加回去
-↓
-返回 true
-```
+- 使用 `Result<T>` 统一接口返回，降低前端和测试判断成本。
+- 使用 `BusinessException` 和全局异常处理区分业务失败与系统异常。
+- 使用 `@Transactional` 保证订单、库存数据一致性。
+- 使用登录拦截器保护订单接口，体现 Controller 前置校验能力。
+- 使用 AOP 统一记录请求日志，避免在每个接口里重复写日志代码。
+- 使用 Redis 缓存商品详情，并在商品变更、下单、取消订单后主动删除缓存。
+- 使用 Redis `SET NX EX` 思路实现学习版库存锁，理解并发下单控制。
+- 使用 RocketMQ 跑通订单创建后的生产者 / 消费者链路。
+- 使用 MockMvc 测试核心接口和典型失败场景，保证后续改动不破坏已有功能。
 
-取消订单接口也使用 `@Transactional`，保证修改订单状态和恢复库存要么都成功，要么都失败。
+## 后续优化方向
 
-## 项目能力覆盖
+- 下单时不再从请求体传 `userId`，而是从登录 token 中解析当前用户。
+- 将错误码集中到枚举或常量类中，避免业务代码里散落数字。
+- RocketMQ 消息发送可以调整到数据库事务提交成功后执行，避免事务回滚但消息已发送。
+- 测试可以继续拆分为单元测试和集成测试，减少对 MySQL、Redis、RocketMQ 同时在线的依赖。
+- 用户密码改为 BCrypt 等加密存储方式，避免明文密码。
+- 登录 token 可迁移到 Redis 或 JWT，解决项目重启后 token 失效的问题。
+- RocketMQ 消费端可以补充幂等处理，避免重复消费带来的业务副作用。
 
-| 能力点 | 当前体现 | 后续补充 |
-| --- | --- | --- |
-| MVC 分层 | Controller / Service / Mapper 分层清楚 | 继续保持新增模块同样分层 |
-| 依赖注入 | 构造器注入 Service、Mapper | 用户模块继续使用构造器注入 |
-| 参数校验 | DTO 中使用 `@NotBlank`、`@NotNull`、`@Min`，校验失败统一返回 `Result<T>` | 用户模块继续沿用参数校验 |
-| 统一返回 | `Result<T>` 包装 `code / message / data` | 新接口继续沿用统一格式 |
-| 全局异常处理 | `BusinessException` + `GlobalExceptionHandler` | 新异常继续统一转换成 `Result<T>` |
-| 事务 | 创建订单、取消订单使用 `@Transactional` | 继续围绕库存一致性复盘 |
-| 数据库 SQL | 商品表、用户表、订单主表、订单明细表 | 后续继续补缓存和消息相关能力 |
-| 数据库索引 | `idx_product_name`、`uk_order_no`、`uk_username`、`idx_user_id` 等 | 后续按查询场景继续补充 |
-| 缓存 | 商品详情使用 Redis String 缓存，修改商品后删除缓存 | 后续复盘缓存命中、缓存失效和过期时间 |
-| 分布式锁 | 创建订单时使用 Redis `SET NX EX` 思路做商品库存锁学习版 | 后续复盘锁过期、锁释放和数据库兜底 |
-| 拦截器 | 登录拦截器保护 `/order/**` 接口 | 后续复盘拦截器和 AOP 的区别 |
-| AOP | `RequestLogAspect` 记录请求方式、路径和耗时 | 后续复盘切面、切点和通知 |
-| 消息队列 | 创建订单成功后发送 RocketMQ 消息，消费者接收并打印订单号 | 后续复盘 Topic、Producer、Consumer |
-| 接口测试 | Apifox 手工测试，MockMvc 自动化测试 | 后续补缓存、消息测试 |
-| Git | 按阶段 commit 并 push 到 GitHub | 封版前整理文档并提交 |
+## 当前定位
 
-## 当前说明
-
-当前商品接口、订单接口和健康检查接口都已统一返回 `Result<T>` 格式。
-
-当前业务错误和请求体参数校验错误已通过 `GlobalExceptionHandler` 返回统一 JSON。订单接口已经通过登录拦截器要求携带 `X-Token`。项目已接入 AOP 请求日志，商品详情接口已接入 Redis 缓存，创建订单流程已加入 Redis 库存锁学习版，并已接入 RocketMQ 订单消息学习版。
-
-用户模块已完成注册、登录和查询当前用户接口。当前登录使用学习版 token，token 暂时保存在内存 `ConcurrentHashMap` 中，后续会结合 Redis 继续优化。
-
-当前自动化测试已经覆盖：
-
-- `/hello` 成功返回。
-- `/product/list` 成功返回数组结构。
-- `/product/999999` 商品不存在。
-- `/product/notExist` 路径参数类型错误。
-- `/user/register` 用户注册成功。
-- `/user/register` 重复用户名返回 `4012 用户名已存在`。
-- `/user/login` 登录成功返回 token。
-- `/user/login` 密码错误返回 `4011 用户名或密码错误`。
-- `/user/me` 带 token 查询当前用户成功，且不返回密码。
-- `/user/me` 不带 token 返回 `4010 未登录`。
-- `/order/create` 不带 token 返回 `4010 未登录`。
-- `/order/create` 请求体参数校验错误。
-- `/order/create` 商品不存在。
-- `/order/create` 库存不足。
-- `/order/create` 正常下单成功并返回订单号。
-- `/order/OD_NOT_EXIST` 订单不存在。
-- `/order/cancel/{orderNo}` 取消订单成功，订单状态变为已取消。
-- 重复取消同一订单返回 `4004 订单已取消`，避免库存重复恢复。
-
-## 后续规划
-
-后续会围绕“项目完整性”和“能讲清楚链路”继续完善，不追求复杂业务堆叠。
-
-- 功能封版：回归测试商品、订单、用户、Redis、RocketMQ 核心链路。
-- 文档与复习封版：同步 README、接口文档、学习笔记，并准备项目讲解。
+这是一个面向后端基础能力训练和项目展示的学习型项目。当前实现刻意保持业务规模可控，重点放在链路完整、代码分层清晰、关键中间件能跑通，并且每个模块都能讲清楚为什么这样设计。
