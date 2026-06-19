@@ -388,6 +388,7 @@ Apifox 和前端更容易判断结果
 4004 订单已取消
 4005 订单取消失败
 4006 恢复库存失败
+4007 商品正在下单，请稍后再试
 5000 系统异常
 ```
 
@@ -1289,15 +1290,85 @@ PUT /product/4 后 product:detail:4 变成 nil
 再次 GET /product/4 后 Redis 重新写入最新商品信息
 ```
 
-Redis 第二阶段会用于库存锁学习版：
+Redis 第二阶段已经用于库存锁学习版：
 
 ```text
-创建订单前尝试获取锁
-拿到锁再扣库存
-业务结束释放锁
+创建订单前尝试获取 lock:product:{productId}
+拿到锁再继续查商品、扣库存、创建订单
+下单成功或失败后在 finally 中释放锁
 ```
 
-这只是学习版，重点是理解 `SET NX EX` 的思想。真实项目里更推荐使用成熟方案，例如 Redisson。
+锁 key 示例：
+
+```text
+lock:product:4
+```
+
+当前加锁逻辑使用的是：
+
+```text
+setIfAbsent(lockKey, lockValue, 10 秒)
+```
+
+它对应 Redis 的 `SET NX EX` 思想：
+
+```text
+NX：只有 key 不存在时才设置成功
+EX：给 key 设置过期时间
+```
+
+为什么 lockValue 要用 UUID：
+
+```text
+每次加锁生成一个随机值。
+释放锁时先判断 Redis 里的 value 还是不是自己当初放进去的 value。
+这样可以降低误删别人锁的风险。
+```
+
+为什么要有 10 秒过期时间：
+
+```text
+如果程序中途异常退出，finally 没来得及释放锁，Redis 也会在 10 秒后自动删除锁。
+这样可以避免锁永远不释放。
+```
+
+为什么下单和取消订单后都要删除商品缓存：
+
+```text
+下单会扣库存。
+取消订单会恢复库存。
+商品详情缓存里包含 stock。
+所以库存变化后必须删除 product:detail:{id}，避免下一次查到旧库存。
+```
+
+已验证场景：
+
+```text
+下单前 product:detail:4 有缓存
+下单后 product:detail:4 变成 nil
+下单后 lock:product:4 也是 nil，说明锁已释放
+再次查询商品后 product:detail:4 重新写入，库存变少
+取消订单后 product:detail:4 再次变成 nil
+```
+
+这只是学习版分布式锁，重点是理解 `SET NX EX` 的思想。真实项目里更推荐使用成熟方案，例如 Redisson。
+
+还要注意：真正兜底库存不能扣成负数的，仍然是数据库 SQL：
+
+```sql
+UPDATE product
+SET stock = stock - #{quantity}
+WHERE id = #{productId}
+  AND stock >= #{quantity}
+  AND status = 1
+```
+
+也就是说：
+
+```text
+Redis 锁：帮助理解并发控制，减少同一商品同时下单的冲突。
+数据库 SQL：最终保证库存不会被扣成负数。
+```
 
 ### RocketMQ 订单消息
 
@@ -1346,7 +1417,8 @@ Message：消息内容
 - 已完成商品详情 Redis 缓存。
 - 已验证缓存 miss / hit。
 - 已验证修改商品后删除缓存。
-- 下单流程加入库存锁学习版。
+- 已完成下单流程 Redis 库存锁学习版。
+- 已验证下单后删除商品缓存、锁释放、取消订单后删除商品缓存。
 
 ### 6 月 20 日：RocketMQ 和功能封版
 
