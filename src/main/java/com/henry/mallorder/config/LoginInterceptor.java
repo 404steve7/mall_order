@@ -1,6 +1,7 @@
 package com.henry.mallorder.config;
 
 import com.henry.mallorder.user.service.UserService;
+import com.henry.mallorder.user.entity.User;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,7 +24,8 @@ public class LoginInterceptor implements HandlerInterceptor {
                              Object handler){
         String token = request.getHeader("X-Token");
 
-        userService.getCurrentUser(token);
+        User currentUser = userService.getCurrentUser(token);
+        request.setAttribute("currentUserId",currentUser.getId());
         return  true;
     }
 

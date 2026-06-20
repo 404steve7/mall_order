@@ -5,9 +5,6 @@ import jakarta.validation.constraints.NotNull;
 
 public class CreateOrderRequest {
 
-    @NotNull(message = "用户ID不能为空")
-    private Long userId;
-
     @NotNull(message = "商品ID不能为空")
     private Long productId;
 
@@ -15,12 +12,6 @@ public class CreateOrderRequest {
     @Min(value = 1,message = "购买数量必须大于0")
     private Integer quantity;
 
-    public Long getUserId() {
-        return userId;
-    }
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
 
     public Long getProductId() {
         return productId;

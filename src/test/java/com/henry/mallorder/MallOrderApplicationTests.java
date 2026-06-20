@@ -68,7 +68,6 @@ class MallOrderApplicationTests {
 
 		String requestBody = """
 				{
-					"userId": 1001,
 					"productId": 999999,
 					"quantity": 1
 					}
@@ -90,7 +89,6 @@ class MallOrderApplicationTests {
 
 		String requestBody = """
 				{
-					"userId": 1001,
 					"productId": 4,
 					"quantity": 999999
 				}	
@@ -126,7 +124,6 @@ class MallOrderApplicationTests {
 
 		String requestBody = """
 				{
-					"userId": 1001,
 					"productId": 4,
 					"quantity": 0
 					}
@@ -157,7 +154,6 @@ class MallOrderApplicationTests {
 
 		String requestBody = """
 				{
-					"userId": 1001,
 					"productId": %d,
 					"quantity": 2
 					}
@@ -188,7 +184,6 @@ class MallOrderApplicationTests {
 
 		String requestBody = """
 				{
-					"userId": 1001,
 					"productId": %d,
 					"quantity": 2
 					}
@@ -234,7 +229,6 @@ class MallOrderApplicationTests {
 
 		String requestBody = """
 				{
-					"userId": 1001,
 					"productId": %d,
 					"quantity": 2
 					}
@@ -440,8 +434,7 @@ class MallOrderApplicationTests {
 	void createOrderReturnsErrorWhenTokenMissing() throws Exception {
 		String requestBody = """
 				{
-					"username": "%s",
-					"password": "123456"
+					"productId": 4,
 					"quantity": 1
 					}
 		""";
@@ -453,6 +446,59 @@ class MallOrderApplicationTests {
 				.andExpect(jsonPath("$.code").value(4010))
 				.andExpect(jsonPath("$.message").value("未登录"))
 				.andExpect(jsonPath("$.data").isEmpty());
+	}
+
+	@Test
+	@Transactional
+	void orderOperationsReturnBusinessErrorWhenOrderBelongsToAnotherUser() throws Exception {
+
+		String ownerToken = registerAndLogin();
+		String otherToken = registerAndLogin();
+
+		Product product = new Product();
+		product.setProductName("测试订单权限商品");
+		product.setPrice(new BigDecimal("10.00"));
+		product.setStock(10);
+		product.setStatus(1);
+		productMapper.insert(product);
+
+		String requestBody = """
+				{
+					"productId": "%s",
+					"quantity": 1
+					}
+		""".formatted(product.getId());
+
+		MvcResult createResult = mockMvc.perform(post("/order/create")
+						.header("X-Token",ownerToken)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(0))
+				.andReturn();
+
+		String responseBody = createResult.getResponse().getContentAsString();
+		String orderNo = JsonPath.read(responseBody, "$.data");
+
+		mockMvc.perform(get("/order/{orderNo}" , orderNo)
+						.header("X-Token", otherToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(4008))
+				.andExpect(jsonPath("$.message").value("无权操作该订单"))
+				.andExpect(jsonPath("$.data").isEmpty());
+
+		mockMvc.perform(post("/order/cancel/{orderNo}" , orderNo)
+						.header("X-Token", otherToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(4008))
+				.andExpect(jsonPath("$.message").value("无权操作该订单"))
+				.andExpect(jsonPath("$.data").isEmpty());
+
+		mockMvc.perform(get("/order/{orderNo}" , orderNo)
+						.header("X-Token", ownerToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.code").value(0))
+				.andExpect(jsonPath("$.data.status").value(1));
 	}
 
 	private String registerAndLogin() throws Exception {

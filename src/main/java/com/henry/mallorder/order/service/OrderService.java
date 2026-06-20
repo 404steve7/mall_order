@@ -45,7 +45,7 @@ public class OrderService {
     }
 
     @Transactional
-    public String createOrder(CreateOrderRequest request) {
+    public String createOrder(Long userId,CreateOrderRequest request) {
 
         String lockKey = PRODUCT_STOCK_LOCK_KEY_PREFIX + request.getProductId();
         String lockValue = UUID.randomUUID().toString();
@@ -73,7 +73,7 @@ public class OrderService {
 
             OrderInfo orderInfo = new OrderInfo();
             orderInfo.setOrderNo(orderNo);
-            orderInfo.setUserId(request.getUserId());
+            orderInfo.setUserId(userId);
             orderInfo.setTotalAmount(totalAmount);
             orderInfo.setStatus(1);
             orderMapper.insertOrderInfo(orderInfo);
@@ -95,10 +95,13 @@ public class OrderService {
         }
     }
 
-    public OrderDetailVO getOrderDetailByOrderNo(String orderNo) {
+    public OrderDetailVO getOrderDetailByOrderNo(Long userId,String orderNo) {
         OrderInfo orderInfo = orderMapper.selectOrderInfoByOrderNo(orderNo);
         if (orderInfo == null) {
             throw new BusinessException(4003,"订单不存在");
+        }
+        if(!orderInfo.getUserId().equals(userId)){
+            throw new BusinessException(4008,"无权操作该订单");
         }
 
         List<OrderItem> items = orderMapper.selectOrderItemsByOrderNo(orderNo);
@@ -116,10 +119,14 @@ public class OrderService {
     }
 
     @Transactional
-    public boolean cancelOrder(String orderNo) {
+    public boolean cancelOrder(Long userId,String orderNo) {
         OrderInfo orderInfo = orderMapper.selectOrderInfoByOrderNo(orderNo);
         if (orderInfo == null) {
             throw new BusinessException(4003,"订单不存在");
+        }
+
+        if(!orderInfo.getUserId().equals(userId)){
+            throw new BusinessException(4008,"无权操作该订单");
         }
 
         if (Integer.valueOf(2).equals(orderInfo.getStatus())) {

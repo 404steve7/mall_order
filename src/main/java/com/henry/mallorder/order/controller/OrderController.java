@@ -20,17 +20,23 @@ public class OrderController {
     }
 
     @PostMapping("/create")
-    public Result<String> createOrder(@Valid @RequestBody CreateOrderRequest request) {
-        return Result.success(orderService.createOrder(request));
+    public Result<String> createOrder(
+            @RequestAttribute("currentUserId") Long userId,
+            @Valid @RequestBody CreateOrderRequest request) {
+        return Result.success(orderService.createOrder(userId,request));
     }
 
     @GetMapping("/{orderNo}")
-    public Result<OrderDetailVO> getOrderInfo(@PathVariable("orderNo") String orderNo) {
-        return Result.success(orderService.getOrderDetailByOrderNo(orderNo));
+    public Result<OrderDetailVO> getOrderInfo(
+            @RequestAttribute("currentUserId") Long userId,
+            @PathVariable("orderNo") String orderNo) {
+        return Result.success(orderService.getOrderDetailByOrderNo(userId,orderNo));
     }
 
     @PostMapping("/cancel/{orderNo}")
-    public Result<Boolean> cancelOrder(@PathVariable("orderNo") String orderNo) {
-        return Result.success(orderService.cancelOrder(orderNo));
+    public Result<Boolean> cancelOrder(
+            @RequestAttribute("currentUserId") Long userId,
+            @PathVariable("orderNo") String orderNo) {
+        return Result.success(orderService.cancelOrder(userId,orderNo));
     }
 }
